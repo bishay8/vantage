@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vantage — Financial Intelligence</title>
+
+<!-- Tailwind Play CDN: generates utility CSS at runtime. Matches Vantage's
+     "pre-defined utility classes only, no compiler" constraint. -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- React + ReactDOM UMD globals (window.React, window.ReactDOM). -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<!-- Babel Standalone: transpiles JSX in the browser. Slow first paint
+     (~2-3s for the 3,500-line file), then cached. -->
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<style>
+  html, body, #root { height: 100%; margin: 0; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+          flex-direction: column; gap: 0.75rem; background: #f8fafc; color: #475569; z-index: 100; }
+  #boot .spinner { width: 36px; height: 36px; border: 3px solid #cbd5e1; border-top-color: #6366f1;
+                   border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="boot">
+  <div class="spinner"></div>
+  <div style="font-size: 14px; font-weight: 600;">Compiling Vantage…</div>
+  <div style="font-size: 12px; color: #94a3b8;">Babel transpiling JSX (~3s)</div>
+</div>
+<div id="root"></div>
+
+<!-- Load Vantage source as a Babel-transpiled script. -->
+<script type="text/babel" data-presets="env,react" src="./vantage.jsx"></script>
+
+<!-- Mount once vantage.jsx defines `Vantage`. -->
+<script type="text/babel" data-presets="env,react">
+  // Hide the boot screen once we get here.
+  const boot = document.getElementById("boot");
+  if (boot) boot.remove();
+  ReactDOM.createRoot(document.getElementById("root")).render(<Vantage />);
+</script>
+</body>
+</html>
