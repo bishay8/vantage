@@ -154,6 +154,87 @@ const GlossarySearch = ({ open, onClose, onNav }) => {
 };
 
 // ============================================================
+// LEGAL TEXT — TEMPLATE ONLY. Replace with lawyer-reviewed copy before
+// shipping to real users. Provided for structural completeness only.
+// ============================================================
+const LEGAL_TEXT = {
+  terms: { title: "Terms of Service", lastUpdated: "May 2026",
+    body: [
+      ["Acceptance of Terms", "By accessing or using Vantage (\"the Service\"), you agree to be bound by these Terms. If you do not agree, do not use the Service."],
+      ["Educational Use Only", "Vantage is provided strictly for educational and informational purposes. The Service is not a financial advisor, broker-dealer, registered investment adviser, insurance agent, accountant, attorney, or tax professional. Nothing in the Service constitutes financial, tax, investment, accounting, legal, or other professional advice."],
+      ["No Fiduciary Relationship", "Use of the Service does not create any fiduciary or advisory relationship between you and Vantage's operators. We do not know your full financial picture and cannot tailor recommendations to your specific circumstances."],
+      ["User Inputs and Calculations", "All calculations are based solely on the data you input. We do not verify the accuracy of your inputs. Output is illustrative and depends entirely on the validity of those inputs."],
+      ["No Guarantee of Accuracy", "While we strive for correctness, the Service is provided \"as is\" without warranties of any kind, express or implied. We do not guarantee that calculations are free from errors, that information is current, or that results will be achieved."],
+      ["Third-Party Integrations", "When you bring your own Anthropic API key for AI features, your interaction with the Anthropic API is governed by Anthropic's terms. We do not store your API key on any server."],
+      ["Limitation of Liability", "To the maximum extent permitted by law, Vantage and its operators shall not be liable for any direct, indirect, incidental, consequential, or punitive damages arising from your use of the Service, including financial losses resulting from decisions made on the basis of the Service's output."],
+      ["Indemnification", "You agree to indemnify and hold harmless Vantage and its operators from any claims arising out of your use of the Service or your violation of these Terms."],
+      ["Modifications", "We may modify these Terms at any time. Continued use after modifications constitutes acceptance of the updated Terms."],
+      ["Governing Law", "These Terms are governed by the laws of the State of California, USA, without regard to conflict-of-laws principles."],
+    ] },
+  privacy: { title: "Privacy Policy", lastUpdated: "May 2026",
+    body: [
+      ["Information We Collect", "Currently the Service runs entirely in your browser and does not transmit your financial inputs to any server. All data you enter (income, expenses, holdings, etc.) lives only in your browser's memory and is lost when you close the tab. We do not use cookies, localStorage, or any tracking."],
+      ["Anthropic API Key (BYOK)", "If you provide an Anthropic API key for AI features, the key is held in your browser session memory only. It is sent directly to Anthropic's servers with your generation request and is never transmitted to our servers. We do not log, store, or retain your key."],
+      ["Future Backend (SOC 2)", "We are building a SOC 2 Type 2 compliant backend that will optionally let you save your data across sessions. When that launches, the data you choose to persist will be encrypted at rest and in transit. You will be asked to opt in explicitly. This Privacy Policy will be updated to reflect the new data flows before that feature ships."],
+      ["No Analytics", "We do not currently collect analytics, usage data, or any telemetry."],
+      ["Data Subject Rights", "Because we do not currently store any of your data, there is nothing for you to delete, export, or correct on our servers. To clear your in-browser data, refresh the page or close the tab."],
+      ["Children", "The Service is not directed at children under 13 and we do not knowingly collect data from them."],
+      ["Changes", "We will update this policy if our data practices change. Material changes will be highlighted at the top of this page."],
+      ["Contact", "Questions about this policy: bishay8@gmail.com"],
+    ] },
+  disclaimer: { title: "Financial Disclaimer", lastUpdated: "May 2026",
+    body: [
+      ["Not Financial Advice", "Nothing in Vantage is financial, tax, investment, insurance, accounting, or legal advice. The Service is an educational tool. Always consult a qualified, licensed professional before making real financial decisions."],
+      ["Estimates, Not Guarantees", "All projections (retirement balance, DCF valuations, NPV, Monte Carlo outcomes, stress-test scores, etc.) are estimates that depend entirely on your inputs and the assumptions baked into each formula. Real-world outcomes will differ — sometimes substantially."],
+      ["Past Performance ≠ Future Returns", "Where the Service uses historical market data (e.g. \"7% annual stock return\" or \"15% volatility\"), these are long-term averages. Your actual returns over any specific time period — especially short ones — will deviate from these averages."],
+      ["No Personalization", "Recommendations and \"Do This Next\" suggestions are based on general rules of thumb and the data you've entered, not on a full understanding of your individual circumstances, tax situation, family obligations, health, or risk tolerance."],
+      ["Tax Information", "Tax rules vary by jurisdiction, change frequently, and have many exceptions. Tax calculations in the Service use simplified assumptions and are not a substitute for a CPA, tax attorney, or tax professional."],
+      ["Investment Risk", "All investments carry risk of loss, including loss of principal. Higher expected returns generally come with higher risk. The Service cannot eliminate this risk; it can only illustrate it."],
+      ["Use At Your Own Risk", "You bear full responsibility for any decisions you make on the basis of information from the Service. The operators of Vantage accept no liability for losses arising from your reliance on the Service."],
+    ] },
+};
+const LegalModal = ({ which, onClose }) => {
+  if (!which) return null;
+  const doc = LEGAL_TEXT[which];
+  if (!doc) return null;
+  return (<div className="fixed inset-0 z-[60] bg-slate-900/70 flex items-start justify-center p-4 pt-12 overflow-y-auto" onClick={onClose}>
+    <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden mb-12">
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white">
+        <div><h3 className="text-lg font-bold text-slate-800">{doc.title}</h3><p className="text-[10px] text-slate-400 mt-0.5">Last updated: {doc.lastUpdated} · <span className="text-red-600 font-semibold">⚠ TEMPLATE TEXT — replace with lawyer-reviewed copy before shipping to real users</span></p></div>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+      <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
+        {doc.body.map(([h, p], i) => (<div key={i} className="mb-4 last:mb-0">
+          <h4 className="text-sm font-bold text-slate-700 mb-1">{i + 1}. {h}</h4>
+          <p className="text-xs text-slate-600 leading-relaxed">{p}</p>
+        </div>))}
+      </div>
+    </div>
+  </div>);
+};
+
+// Assumptions: a collapsible "How we calculate this" panel for transparency.
+// Each module's formulas and assumptions are documented here, viewable on demand.
+const Assumptions = ({ items, title = "How we calculate this" }) => {
+  const [open, setOpen] = useState(false);
+  return (<div className="mt-6 border border-slate-200 rounded-xl bg-slate-50">
+    <button onClick={() => setOpen(!open)} className="w-full px-4 py-3 flex items-center justify-between text-left">
+      <div className="flex items-center gap-2"><span className="text-base">📐</span><span className="text-sm font-bold text-slate-700">{title}</span><span className="text-[10px] text-slate-400">(transparency — see exactly what's assumed)</span></div>
+      <span className="text-slate-400 text-sm">{open ? "▲" : "▼"}</span>
+    </button>
+    {open && (<div className="px-4 pb-4 border-t border-slate-200 bg-white">
+      <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 my-3">⚠ These calculations are estimates. Real-world results depend on inputs and assumptions that may not match your situation. Treat outputs as educational, not as advice.</p>
+      {items.map((item, i) => (<div key={i} className="mb-3 last:mb-0">
+        <div className="text-xs font-bold text-slate-700 mb-1">{item.formula}</div>
+        <div className="text-xs text-slate-600 mb-1">{item.what}</div>
+        {item.assumptions && <ul className="text-[11px] text-slate-500 list-disc ml-4 space-y-0.5">{item.assumptions.map((a, j) => <li key={j}>{a}</li>)}</ul>}
+        {item.source && <div className="text-[10px] text-slate-400 mt-1 italic">Source: {item.source}</div>}
+      </div>))}
+    </div>)}
+  </div>);
+};
+
+// ============================================================
 // LOCALE / REGIONS — currency, account types, median benchmarks per region.
 // ============================================================
 const LOCALES = {
@@ -733,12 +814,13 @@ function Guide({ journeys, onSelectJourney }) {
 // ============================================================
 // SMART ONBOARDING (3-step conversational flow)
 // ============================================================
-function Onboarding({ onComplete }) {
+function Onboarding({ onComplete, onLegalOpen }) {
   const [step, setStep] = useState(0);
   const [intent, setIntent] = useState(null);
   const [knowledge, setKnowledge] = useState(50);
   const [focus, setFocus] = useState([]);
   const [pickedTemplate, setPickedTemplate] = useState(null);
+  const [agreedTerms, setAgreedTerms] = useState(false);
 
   const intents = [
     { id: "personal", emoji: "💰", title: "Take control of my money", desc: "Budget, save, manage debt, retirement", route: "personal" },
@@ -763,15 +845,23 @@ function Onboarding({ onComplete }) {
         <h2 className="text-2xl font-bold text-slate-800 text-center mb-6">What brought you here today?</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {intents.map(it => (
-            <button key={it.id} onClick={() => { setIntent(it); setStep(1); }} className={`p-5 rounded-xl border-2 text-left transition-all hover:border-indigo-400 hover:shadow-md ${intent?.id === it.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white"}`}>
+            <button key={it.id} disabled={!agreedTerms} onClick={() => { setIntent(it); setStep(1); }} className={`p-5 rounded-xl border-2 text-left transition-all ${!agreedTerms ? "opacity-40 cursor-not-allowed border-slate-200 bg-white" : `hover:border-indigo-400 hover:shadow-md ${intent?.id === it.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white"}`}`}>
               <div className="text-3xl mb-2">{it.emoji}</div>
               <div className="text-sm font-bold text-slate-800">{it.title}</div>
               <div className="text-xs text-slate-500 mt-1">{it.desc}</div>
             </button>
           ))}
         </div>
-        <div className="text-center mt-6">
-          <button onClick={() => onComplete({ intent: null, knowledge: 50, focus: [], route: "home" })} className="text-xs text-slate-400 hover:text-slate-600">Skip — I'll explore on my own</button>
+        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)} className="mt-0.5 w-4 h-4 accent-indigo-600" />
+            <span className="text-xs text-amber-900 leading-relaxed">
+              <span className="font-bold">I understand Vantage is for educational use only and is not financial, tax, or investment advice.</span> All calculations are estimates based on the inputs I provide. I will consult a qualified professional before making real decisions. I agree to the <button type="button" onClick={() => onLegalOpen && onLegalOpen("terms")} className="underline text-indigo-700 hover:text-indigo-900">Terms</button>, <button type="button" onClick={() => onLegalOpen && onLegalOpen("privacy")} className="underline text-indigo-700 hover:text-indigo-900">Privacy Policy</button>, and <button type="button" onClick={() => onLegalOpen && onLegalOpen("disclaimer")} className="underline text-indigo-700 hover:text-indigo-900">Disclaimer</button>.
+            </span>
+          </label>
+        </div>
+        <div className="text-center mt-4">
+          <button disabled={!agreedTerms} onClick={() => onComplete({ intent: null, knowledge: 50, focus: [], route: "home" })} className={`text-xs ${agreedTerms ? "text-slate-400 hover:text-slate-600" : "text-slate-300 cursor-not-allowed"}`}>Skip — I'll explore on my own</button>
         </div>
       </div>
     </div>
@@ -2159,6 +2249,10 @@ function StressTest({ jargonFree: jf, riskType, onNav }) {
         { icon: "P", text: "Review your Portfolio allocation", nav: "portfolio" },
         ...(d.emergencyFund < d.monthlyExpenses * 6 ? [{ icon: "$", text: "Build your emergency fund in Personal Finance", nav: "personal" }] : []),
       ]} />
+      <Assumptions items={[
+        { formula: "Survival score = function of cash runway, debt buffer, allocation hit", what: "We apply pre-set crash severities (e.g. -30% market, 6-month job loss, +3% mortgage rate) to your inputs, compute the remaining cash runway and monthly cash flow under each scenario, and weight into a 0-100 score.", assumptions: ["Market crash: -30% on stock allocation, -10% on bonds (a 'typical' bear market — actual crashes range -20% to -55%)", "Job loss scenario: 6 months with zero income; unemployment benefits not modeled", "Rate spike: +3 percentage points on variable mortgage rate", "Inflation scenario: +8% to expenses, no income adjustment", "Recession: combined effect of 20% market drop + 10% income cut"], source: "Severity values chosen to roughly match 75th-percentile historical bad events (Great Recession, 1973 oil crisis, 2020 pandemic shock)." },
+        { formula: "Emergency runway = liquid cash / monthly burn after crash", what: "We measure how many months your savings would cover expenses if income drops to zero (or the scenario value) and expenses adjust per scenario.", assumptions: ["Liquid = checking + savings only (investments treated as illiquid because selling in a crash locks losses)", "No unemployment insurance, severance, or family help modeled"] },
+      ]} />
     </div>
   );
 }
@@ -2636,6 +2730,13 @@ function Valuation({ jargonFree: jf }) {
         <Card accent="neutral"><div className="text-xs text-slate-400">{jf ? "Total Business Value" : "Enterprise Value"}</div><div className="text-2xl font-bold text-indigo-600 mt-1">{$(ev)}</div><div className="text-[10px] text-slate-400 mt-1">Fair range: {$(ev * 0.7)} – {$(ev * 1.3)}</div></Card>
         <Card accent="good"><div className="text-xs text-slate-400">{jf ? "What Each Share Is Worth" : "Price/Share"}</div><div className="text-3xl font-bold text-emerald-600 mt-1">{$(pps)}</div><div className="text-[10px] text-slate-400 mt-1">Fair range: {$(pps * 0.7)} – {$(pps * 1.3)}</div></Card>
       </div>
+      <Assumptions items={[
+        { formula: "Cost of Equity (CAPM): rE = Rf + β × (Rm - Rf)", what: "Risk-free rate plus beta times the equity risk premium. Standard CAPM.", assumptions: ["Risk-free rate = 10-year Treasury yield (you set it manually; currently a hardcoded default)", "Beta is a noisy single number — real betas vary by estimation window and shift over time", "Equity risk premium of 5-7% historically; could be lower going forward as some research suggests"], source: "Sharpe (1964), Lintner (1965); see Damodaran's annual ERP updates for current figures." },
+        { formula: "WACC = (E/V)·rE·(1 - T) + (D/V)·rD·(1 - T)", what: "Weighted average cost of capital. Equity-weighted cost of equity plus debt-weighted after-tax cost of debt.", assumptions: ["Equity and debt weights are at MARKET VALUE, not book value", "Tax rate applies only to interest (debt tax shield) — assumes no NOLs or AMT", "Capital structure stays roughly constant over the projection period"] },
+        { formula: "DCF = Σ FCF_t / (1+WACC)^t + Terminal Value / (1+WACC)^n", what: "Discounted Free Cash Flow with a Gordon growth terminal value: TV = FCF_n × (1+g) / (WACC - g).", assumptions: ["Free cash flows you input are unlevered (firm-level, before interest)", "Terminal growth rate must be below WACC (otherwise the formula blows up to infinity)", "Long-term growth rate cannot exceed long-term GDP growth (typically 2-3%) — anything higher implies the company eventually owns the whole economy", "60-80% of the answer typically comes from the terminal value — the most fragile assumption"], source: "Standard practitioner DCF; Aswath Damodaran 'Investment Valuation' is the canonical reference." },
+        { formula: "Per-share value = (Enterprise Value - Debt + Cash) / Shares Outstanding", what: "Equity value (numerator) divided by diluted shares.", assumptions: ["Shares outstanding doesn't include unvested stock comp dilution or future issuances", "Cash is freely deployable (no minimum operating cash reserved)"] },
+        { formula: "Fair-value range ±30%", what: "Equity analysts who do DCF for a living publish ranges, not point estimates. A 1% move in WACC swings the answer 15-25%. Small growth-rate changes compound.", source: "Standard sell-side equity research practice." },
+      ]} />
     </div>
   );
 }
@@ -2683,6 +2784,13 @@ function CapBudget({ jargonFree: jf }) {
         {ranked.length > 0 && <div className="mt-2 p-2 bg-indigo-50 rounded-lg text-xs text-indigo-700">{jf ? `Best choice: ${ranked[0].name} — creates ${$(ranked[0].eaa)} in value per year` : `Recommended: ${ranked[0].name} — highest EAA at ${$(ranked[0].eaa)}/yr`}</div>}
       </Card>}
       <Btn onClick={() => setProjects([...projects, { name: `Project ${String.fromCharCode(65 + projects.length)}`, inv: 100000, cfs: [25000, 25000, 25000, 25000, 25000] }])} v="secondary" className="w-full">+ Add Project</Btn>
+      <Assumptions items={[
+        { formula: "NPV = Σ CF_t / (1+r)^t - Initial Investment", what: "Sum of present-valued cash flows minus upfront cost. Positive NPV = project creates value at the given discount rate.", assumptions: ["Cash flows are end-of-period (annual)", "Discount rate is constant over the project life — real projects often face changing capital costs", "No reinvestment of intermediate cash flows modeled", "No salvage/terminal value beyond the last cash flow you enter — add it manually as the final year's cash flow"], source: "Brealey, Myers & Allen 'Principles of Corporate Finance'." },
+        { formula: "IRR = discount rate that makes NPV = 0 (Newton-Raphson solver)", what: "We iterate to find the rate where present-valued cash flows exactly equal the initial investment.", assumptions: ["Solver starts at 10% and converges in ≤200 iterations; pathological cash flows (multiple sign changes) can produce multiple IRRs", "When IRR > WACC, accept; otherwise reject. For mutually exclusive projects, use NPV not IRR — IRR penalizes scale"] },
+        { formula: "Payback = years until cumulative cash flow = initial investment", what: "Linear interpolation in the final partial year. Ignores time value of money — a quick-and-dirty risk indicator only.", assumptions: ["Does not discount future cash flows", "Ignores cash flows after payback"] },
+        { formula: "PI (Profitability Index) = PV of cash inflows / Initial Investment", what: "Bang per buck. Useful when capital is rationed and you can't take every positive-NPV project.", assumptions: ["Same as NPV assumptions"] },
+        { formula: "EAA (Equivalent Annual Annuity) = NPV × r / (1 - (1+r)^-n)", what: "Spreads NPV evenly across each year. Use this to fairly compare projects with different lifespans — a 10-year project with NPV $500k is NOT better than a 3-year project with NPV $400k.", assumptions: ["Project can be repeated indefinitely at the same terms — usually not true in practice"], source: "Standard CFA Institute capital budgeting methodology." },
+      ]} />
     </div>
   );
 }
@@ -2864,6 +2972,10 @@ function CashFlow({ jargonFree: jf }) {
         ...(income - forecast.monthlyExp < 500 ? [{ title: "Cut discretionary spending", detail: "Your margin is thin. Look for subscriptions or expenses to reduce." }] : []),
         ...(finalBal > income * 2 ? [{ title: "Invest the excess", detail: `You'll have ${$(finalBal)} — consider investing what you don't need for expenses.` }] : []),
         ...(!goesNeg && income - forecast.monthlyExp >= 500 ? [{ title: "Automate your savings", detail: "Set up automatic transfers to savings on payday." }] : []),
+      ]} />
+      <Assumptions items={[
+        { formula: "Forecast balance_m = balance_{m-1} + income - expenses ± one-offs", what: "We project your bank balance month by month, applying recurring income and expenses each month plus any one-time events you enter for specific months.", assumptions: ["Income and expenses are constant across months (no seasonal variation modeled — bonuses, tax refunds, holiday spending should be entered as one-offs)", "No interest earned on savings balance", "Inflation is not applied to expenses or income"], source: "Standard envelope-budgeting cash-flow projection." },
+        { formula: "Risk flag: any month where balance < 0", what: "We highlight the worst month and the amount needed as a buffer.", assumptions: ["Assumes no overdraft protection or emergency credit — real life often has both"] },
       ]} />
     </div>
   );
@@ -3817,6 +3929,11 @@ function TaxOptimizer({ jargonFree: jf, locale }) {
       </tbody></table>
       <WhyMatters text="Asset location adds ~30-50 basis points per year for a serious portfolio — that compounds to hundreds of thousands over a career. Vanguard's research confirms it's the second-most-valuable tax move after tax-loss harvesting." />
     </Card>
+    <Assumptions items={[
+      { formula: "Roth vs Traditional = retirement bracket > current bracket", what: "Roth wins if you expect to be in a HIGHER tax bracket in retirement than today. Traditional wins if you expect to be in a LOWER bracket. We assume you can estimate your retirement bracket within 5 percentage points.", assumptions: ["Tax rates and bracket thresholds may change between now and your retirement — Congress adjusts these regularly", "Your retirement income mix (other taxable income, RMDs, Social Security taxation) is not modeled in this simple comparison", "State income tax can shift the answer materially if you plan to relocate"], source: "Standard tax planning heuristic; see IRS Pub 590-A for current contribution limits." },
+      { formula: "Contribution waterfall ranks by after-tax expected return", what: "HSA (#1) gets triple tax-advantage (deductible, tax-free growth, tax-free medical withdrawals). 401(k) match (#2) is a 100% instant return on the matched portion. IRA (#3) is the next tax-advantaged dollar. Remaining 401(k) (#4) fills the cap. Taxable (#5) is the last resort.", assumptions: ["You're HSA-eligible (high-deductible health plan required)", "Employer match is dollar-for-dollar up to your stated percentage — adjust if yours is 50% match", "2026 contribution limits used: HSA $4,150, IRA $7,000, 401(k) $23,000 — these change annually with inflation"], source: "Bogleheads investment priority chart; consult a CPA for your specific situation." },
+      { formula: "Asset location based on tax efficiency of each asset class", what: "Bonds and REITs generate ordinary-income taxable distributions, so we shelter them in tax-deferred accounts. Stocks get favorable LTCG treatment in taxable; foreign stocks need taxable to claim the foreign tax credit. High-upside assets (crypto, growth stocks) ideally sit in Roth.", assumptions: ["You have enough assets that location actually matters (under ~$100k, it's negligible)", "Current tax law continues — qualified dividend treatment and the foreign tax credit are both at congressional risk", "You can actually hold the right assets in the right accounts (some 401(k)s have limited fund choices)"], source: "Vanguard \"Putting a Value on Your Value\" research (2014) — asset location worth ~30bp/yr." },
+    ]} />
   </div>);
 }
 
@@ -3880,6 +3997,11 @@ function MonteCarloRetirement({ jargonFree: jf }) {
       </div>
       <WhyMatters text="The Trinity study found a 4% annual withdrawal rate works for 30 years 95% of the time. Higher withdrawals or worse sequence-of-returns risk shrink that. Most failures happen because the first 5 years of retirement coincide with a bear market — Monte Carlo shows you the probability." />
     </Card>
+    <Assumptions items={[
+      { formula: "Geometric Brownian Motion via Box-Muller normal sampling", what: "We simulate 5,000 independent paths of monthly returns. Each month's return is drawn from a normal distribution with mean = your expected annual return / 12, std dev = your annual volatility / √12.", assumptions: ["Returns are independent month-to-month (no momentum or mean reversion modeling)", "Volatility is constant (real markets have volatility clustering)", "Contributions arrive at end of month with no inflation adjustment", "No taxes or fees applied during accumulation phase"], source: "Standard Monte Carlo methodology used by Vanguard, Fidelity, and most professional planning software." },
+      { formula: "Withdrawal years = balance × (1+r/12)^12 / withdrawal - until depleted", what: "We project each percentile balance forward at your assumed return rate, subtracting your monthly withdrawal. Loop ends when balance hits zero or 100 years pass.", assumptions: ["Withdrawal stays constant in real dollars (no inflation adjustment shown)", "Return during retirement equals the accumulation-phase return (real retirees usually de-risk and accept lower returns)", "No social security, pension, or other income offsets"], source: "Trinity study (1998) used a similar framework but assumed historical returns instead of Monte Carlo sampling." },
+      { formula: "Confidence label ±25%", what: "Single retirement projections lie about precision. Even a careful Monte Carlo only narrows uncertainty; it doesn't eliminate it. Real life adds unpredictable shocks (job loss, health, divorce, inheritance) that no model captures.", assumptions: ["The historical risk premium continues to hold (not guaranteed)", "Your income, savings rate, and lifestyle stay roughly stable over the projection window"] },
+    ]} />
   </div>);
 }
 
@@ -4077,6 +4199,8 @@ function Vantage() {
   // Backend-required UI stubs
   const [plaidOpen, setPlaidOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);  // Mobile sidebar open/closed
+  const [legalOpen, setLegalOpen] = useState(null);  // "terms" | "privacy" | "disclaimer" | null
 
   const handleJourneySelect = (j) => {
     setJourney(j);
@@ -4135,6 +4259,7 @@ function Vantage() {
     setActive(id);
     setJourney(null);
     bumpVisit(id);
+    setSidebarOpen(false);  // Close mobile sidebar after picking
   };
 
   // Tiers visible in sidebar
@@ -4159,14 +4284,14 @@ function Vantage() {
     });
   };
 
-  if (!boarded) return <Onboarding onComplete={(p) => {
+  if (!boarded) return (<><Onboarding onLegalOpen={setLegalOpen} onComplete={(p) => {
     setPrefs(pp => ({ ...pp, ...p, hiddenTiers: pp.hiddenTiers || [], extraTiers: pp.extraTiers || [] }));
     if (p.knowledge !== undefined && p.knowledge < 30) setJargon(true);
     if (p.customCategories) setCustomCategories(p.customCategories);
     setActive(p.route || "home");
     setBoarded(true);
     if (p.route && p.route !== "home") bumpVisit(p.route);
-  }} />;
+  }} /><LegalModal which={legalOpen} onClose={() => setLegalOpen(null)} /></>);
 
   const visibleModules = MODULES.filter(m => visibleTiers.has(m.tier));
   const crumb = BREADCRUMBS[active] || [active];
@@ -4194,8 +4319,10 @@ function Vantage() {
       <CustomizePanel open={customizeOpen} onClose={() => setCustomizeOpen(false)} onApply={applyCustomCategories} currentLabel={customCategories?.label} />
       <PlaidStub open={plaidOpen} onClose={() => setPlaidOpen(false)} />
       <ReminderStub open={reminderOpen} onClose={() => setReminderOpen(false)} />
+      <LegalModal which={legalOpen} onClose={() => setLegalOpen(null)} />
 
-      <aside className="w-56 bg-slate-900 flex flex-col py-4 px-2.5 shrink-0">
+      {sidebarOpen && <div className="md:hidden fixed inset-0 z-30 bg-slate-900/60" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`fixed md:static inset-y-0 left-0 z-40 w-56 bg-slate-900 flex flex-col py-4 px-2.5 shrink-0 transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
         <div className="px-2 mb-3">
           <h1 className="text-white text-xl font-bold tracking-tight">Vantage</h1>
           <p className="text-indigo-400 text-xs mt-0.5">Financial Intelligence</p>
@@ -4232,16 +4359,24 @@ function Vantage() {
           })}
         </div>
         <div className="px-2 pt-3 border-t border-slate-800">
-          <button onClick={() => setManageOpen(true)} className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors mb-1 text-left">⚙ Manage Modules</button>
-          <p className="text-xs text-slate-500 px-3 mt-1">Hover <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-slate-700 text-slate-400 text-xs">i</span> for definitions</p>
+          <button onClick={() => setManageOpen(true)} className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors mb-2 text-left">⚙ Manage Modules</button>
+          <div className="flex flex-wrap gap-x-2 gap-y-1 px-3 text-[10px] text-slate-500">
+            <button onClick={() => setLegalOpen("terms")} className="hover:text-slate-300">Terms</button>
+            <span className="text-slate-700">·</span>
+            <button onClick={() => setLegalOpen("privacy")} className="hover:text-slate-300">Privacy</button>
+            <span className="text-slate-700">·</span>
+            <button onClick={() => setLegalOpen("disclaimer")} className="hover:text-slate-300">Disclaimer</button>
+          </div>
+          <p className="text-[10px] text-slate-600 px-3 mt-2 italic">Educational tool — not financial advice</p>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className={`shrink-0 flex items-center justify-between px-6 py-3 border-b ${dark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}>
-          <div className="flex items-center gap-2 text-sm">
-            <span className={`w-2 h-2 rounded-full ${activeTh.dot}`} />
+        <header className={`shrink-0 flex items-center justify-between px-3 md:px-6 py-3 border-b ${dark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}>
+          <div className="flex items-center gap-2 text-sm min-w-0">
+            <button onClick={() => setSidebarOpen(true)} className={`md:hidden mr-1 w-8 h-8 rounded-lg flex items-center justify-center ${dark ? "bg-slate-700 text-slate-300" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Open menu">☰</button>
+            <span className={`w-2 h-2 rounded-full ${activeTh.dot} shrink-0`} />
             {crumb.map((c, i) => (
               <span key={i} className="flex items-center gap-2">
                 <span className={`${i === crumb.length - 1 ? (dark ? "text-white font-bold" : "text-slate-800 font-bold") : (dark ? "text-slate-400" : "text-slate-500")}`}>{c}</span>
@@ -4249,18 +4384,20 @@ function Vantage() {
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-2">
-            {riskProfile && riskLabel && <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${riskLabel === "aggressive" ? "bg-red-100 text-red-700" : riskLabel === "growth" ? "bg-indigo-100 text-indigo-700" : riskLabel === "balanced" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{riskLabel.charAt(0).toUpperCase() + riskLabel.slice(1)} Risk</span>}
-            <LocaleSwitcher locale={locale} onChange={setLocale} />
-            <button onClick={() => setCoupled(!coupled)} className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${coupled ? "bg-pink-500 text-white" : (dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}`} title="Couples mode — split inputs You/Partner">{coupled ? "💑 Couples ON" : "💑 Couples"}</button>
-            <button onClick={() => setPlaidOpen(true)} className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Connect your bank (requires backend)">🏦</button>
-            <button onClick={() => setReminderOpen(true)} className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Set a reminder">⏰</button>
-            <button onClick={() => { const pf = active === "personal"; saveSnapshot({ nw: 0, surplus: 0, healthScore, label: pf ? "From Personal Finance" : `From ${active}` }); nav("snapshots"); }} className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Save snapshot of current state">📸</button>
-            <button onClick={() => setGlossaryOpen(true)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Search financial terms">
-              <span>🔍</span><span>Glossary</span>
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+            {riskProfile && riskLabel && <span className={`hidden md:inline px-2.5 py-1 rounded-full text-xs font-bold ${riskLabel === "aggressive" ? "bg-red-100 text-red-700" : riskLabel === "growth" ? "bg-indigo-100 text-indigo-700" : riskLabel === "balanced" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{riskLabel.charAt(0).toUpperCase() + riskLabel.slice(1)} Risk</span>}
+            <div className="hidden md:flex items-center gap-2">
+              <LocaleSwitcher locale={locale} onChange={setLocale} />
+              <button onClick={() => setCoupled(!coupled)} className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${coupled ? "bg-pink-500 text-white" : (dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}`} title="Couples mode — split inputs You/Partner">{coupled ? "💑 Couples ON" : "💑 Couples"}</button>
+              <button onClick={() => setPlaidOpen(true)} className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Connect your bank (requires backend)">🏦</button>
+              <button onClick={() => setReminderOpen(true)} className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Set a reminder">⏰</button>
+              <button onClick={() => { const pf = active === "personal"; saveSnapshot({ nw: 0, surplus: 0, healthScore, label: pf ? "From Personal Finance" : `From ${active}` }); nav("snapshots"); }} className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Save snapshot of current state">📸</button>
+            </div>
+            <button onClick={() => setGlossaryOpen(true)} className={`px-2 md:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Search financial terms">
+              <span>🔍</span><span className="hidden md:inline">Glossary</span>
             </button>
-            <button onClick={() => setJargon(!jargon)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${jargon ? "bg-emerald-600 text-white" : (dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}`} title="Show plain-English explanations and simpler labels"><span className={`inline-block w-7 h-3.5 rounded-full relative transition-colors ${jargon ? "bg-emerald-300" : "bg-slate-300"}`}><span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${jargon ? "left-3.5" : "left-0.5"}`} /></span><span>Plain English</span></button>
-            <button onClick={() => setDark(!dark)} className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${dark ? "bg-slate-700 text-amber-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Toggle dark mode">{dark ? "☀" : "☾"}</button>
+            <button onClick={() => setJargon(!jargon)} className={`px-2 md:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${jargon ? "bg-emerald-600 text-white" : (dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}`} title="Show plain-English explanations and simpler labels"><span className={`inline-block w-7 h-3.5 rounded-full relative transition-colors ${jargon ? "bg-emerald-300" : "bg-slate-300"}`}><span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${jargon ? "left-3.5" : "left-0.5"}`} /></span><span className="hidden md:inline">Plain English</span></button>
+            <button onClick={() => setDark(!dark)} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center transition-colors ${dark ? "bg-slate-700 text-amber-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Toggle dark mode">{dark ? "☀" : "☾"}</button>
           </div>
         </header>
 

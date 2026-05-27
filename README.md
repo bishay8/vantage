@@ -19,9 +19,17 @@ Financial intelligence in plain English. 26 modules covering personal finance, i
 
 ## For reviewers
 
-Open the URL above and click around — onboarding will walk you through it. Plain English is on by default; flip it off in the top bar if you prefer the technical labels.
+Open the URL above on phone, tablet, or desktop — onboarding will walk you through it. Plain English is on by default; flip it off in the top bar if you prefer the technical labels.
+
+On mobile, tap the ☰ icon top-left to open the sidebar. It auto-closes after picking a module.
 
 To try the AI category generation, you'll need an Anthropic API key (console.anthropic.com). Your key stays in your browser tab only.
+
+## ⚠ Legal copy is template only
+
+The Terms of Service, Privacy Policy, and Financial Disclaimer are **template text intended to show structural completeness**. They are not lawyer-reviewed and must be replaced before shipping to real users. The in-app modals flag this in red.
+
+Each computation-heavy module (Monte Carlo, Tax Optimizer, Stress Test, Valuation, Capital Budgeting, Cash Flow) now includes a collapsible "📐 How we calculate this" panel listing every formula, the assumptions it depends on, and (where relevant) the source. Transparency about model limitations is the point — finance tools that hide assumptions cause overconfidence.
 
 ## Tech
 
