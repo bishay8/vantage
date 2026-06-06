@@ -1262,9 +1262,12 @@ function PersonalFinance({ jargonFree, riskType, onNav, onEngage, toured, onDism
   const nmd = d.studentLoans + d.autoLoan + d.creditCards + d.otherDebt;
   const payoff = d.debtPayments > 0 ? Math.ceil(nmd / d.debtPayments) : Infinity;
   const retireData = useMemo(() => {
-    const r = d.retireReturn / 100 / 12; let b = d.retireCurrent;
-    const pts = [{ y: 0, b }]; for (let m = 1; m <= d.retireYrs * 12; m++) { b = b * (1 + r) + d.retireMo; if (m % 12 === 0) pts.push({ y: m / 12, b }); }
-    return { final: b, contributed: d.retireCurrent + d.retireMo * d.retireYrs * 12, growth: b - d.retireCurrent - d.retireMo * d.retireYrs * 12, pts };
+    // Clamp inputs so extreme values can't overflow to Infinity in the projection.
+    const rate = Math.max(-50, Math.min(d.retireReturn, 50));
+    const yrs = Math.max(0, Math.min(d.retireYrs, 80));
+    const r = rate / 100 / 12; let b = d.retireCurrent;
+    const pts = [{ y: 0, b }]; for (let m = 1; m <= yrs * 12; m++) { b = b * (1 + r) + d.retireMo; if (m % 12 === 0) pts.push({ y: m / 12, b }); }
+    return { final: b, contributed: d.retireCurrent + d.retireMo * yrs * 12, growth: b - d.retireCurrent - d.retireMo * yrs * 12, pts };
   }, [d.retireCurrent, d.retireMo, d.retireReturn, d.retireYrs]);
   let score = 0;
   if (nw > 0) score += 15; else if (nw > -50000) score += 8; else score += 2;
@@ -1841,12 +1844,12 @@ function MarketLab({ jargonFree: jf }) {
     });
   };
 
-  const sma1 = calcSMA(prices, smaPeriod1);
-  const sma2 = calcSMA(prices, smaPeriod2);
-  const emaLine = calcEMA(prices, emaPeriod);
-  const rsi = calcRSI(prices);
-  const macd = calcMACD(prices);
-  const bollinger = calcBollinger(prices);
+  const sma1 = useMemo(() => calcSMA(prices, smaPeriod1), [prices, smaPeriod1]);
+  const sma2 = useMemo(() => calcSMA(prices, smaPeriod2), [prices, smaPeriod2]);
+  const emaLine = useMemo(() => calcEMA(prices, emaPeriod), [prices, emaPeriod]);
+  const rsi = useMemo(() => calcRSI(prices), [prices]);
+  const macd = useMemo(() => calcMACD(prices), [prices]);
+  const bollinger = useMemo(() => calcBollinger(prices), [prices]);
 
   // Stochastic RSI
   const calcSRSI = (rsiData, period = 14) => {
@@ -2815,7 +2818,7 @@ function Valuation({ jargonFree: jf }) {
 }
 
 function CapBudget({ jargonFree: jf }) {
-  const [projects, setProjects] = useState([{ name: "Project A", inv: 100000, cfs: [30000, 35000, 40000, 45000, 50000] }, { name: "Project B", inv: 150000, cfs: [50000, 50000, 50000, 50000, 50000] }]);
+  const [projects, setProjects] = useState([{ id: 1, name: "Project A", inv: 100000, cfs: [30000, 35000, 40000, 45000, 50000] }, { id: 2, name: "Project B", inv: 150000, cfs: [50000, 50000, 50000, 50000, 50000] }]);
   const [dr, setDr] = useState(10);
   const analyze = (p) => { const r = dr / 100; const n = p.cfs.length; const pvs = p.cfs.map((c, i) => c / Math.pow(1 + r, i + 1)); const npv = pvs.reduce((a, b) => a + b, 0) - p.inv; const pi = p.inv > 0 ? pvs.reduce((a, b) => a + b, 0) / p.inv : 0; let cum = 0, pb = Infinity; for (let i = 0; i < n; i++) { cum += p.cfs[i]; if (cum >= p.inv) { pb = i + 1 - (cum - p.inv) / p.cfs[i]; break; } } let irr = 0.1; for (let it = 0; it < 200; it++) { let f = -p.inv, df = 0; for (let i = 0; i < n; i++) { f += p.cfs[i] / Math.pow(1 + irr, i + 1); df -= (i + 1) * p.cfs[i] / Math.pow(1 + irr, i + 2); } if (Math.abs(f) < 0.01) break; irr -= f / df; if (irr <= -1) irr = 0.001; }
     // EAA: Equivalent Annual Annuity — NPV spread evenly over project life
@@ -2829,7 +2832,7 @@ function CapBudget({ jargonFree: jf }) {
       <Title tier="My Business" sub={jf ? "Should you invest in this? Let the numbers decide." : "NPV, IRR, Payback, PI — unlimited projects and years"}>Capital Budgeting</Title>
       <div className="mb-3"><ConfidenceLabel level="estimate" note="NPV depends entirely on your cash-flow forecast and discount-rate guess. Small input changes compound to large output swings. Treat positive NPV as 'likely worth doing,' not 'guaranteed return.'" /></div>
       <F label={jf ? "Minimum Return You Need" : "Discount Rate"} value={dr} onChange={setDr} suffix="%" />
-      {projects.map((p, pi) => <Card key={pi} className="mb-4 mt-3"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><input type="text" value={p.name} onChange={e => { const u = [...projects]; u[pi].name = e.target.value; setProjects(u); }} className="text-sm font-bold text-slate-800 dark:text-[#eef1f6] bg-transparent border-b border-slate-200 dark:border-[#323844] outline-none" />{results[pi].npv >= 0 ? <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded">{jf ? "GOOD DEAL" : "ACCEPT"}</span> : <span className="px-2 py-0.5 bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300 text-xs font-bold rounded">{jf ? "BAD DEAL" : "REJECT"}</span>}</div><div className="flex gap-2"><Btn onClick={() => { const u = [...projects]; u[pi].cfs.push(u[pi].cfs[u[pi].cfs.length - 1] || 25000); setProjects(u); }} v="secondary">+ Year</Btn><Btn onClick={() => { const u = [...projects]; if (u[pi].cfs.length > 1) u[pi].cfs.pop(); setProjects(u); }} v="secondary">- Year</Btn>{projects.length > 1 && <Btn onClick={() => setProjects(projects.filter((_, i) => i !== pi))} v="danger">Remove</Btn>}</div></div>
+      {projects.map((p, pi) => <Card key={p.id} className="mb-4 mt-3"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><input type="text" value={p.name} onChange={e => { const u = [...projects]; u[pi].name = e.target.value; setProjects(u); }} className="text-sm font-bold text-slate-800 dark:text-[#eef1f6] bg-transparent border-b border-slate-200 dark:border-[#323844] outline-none" />{results[pi].npv >= 0 ? <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded">{jf ? "GOOD DEAL" : "ACCEPT"}</span> : <span className="px-2 py-0.5 bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300 text-xs font-bold rounded">{jf ? "BAD DEAL" : "REJECT"}</span>}</div><div className="flex gap-2"><Btn onClick={() => { const u = [...projects]; u[pi].cfs.push(u[pi].cfs[u[pi].cfs.length - 1] || 25000); setProjects(u); }} v="secondary">+ Year</Btn><Btn onClick={() => { const u = [...projects]; if (u[pi].cfs.length > 1) u[pi].cfs.pop(); setProjects(u); }} v="secondary">- Year</Btn>{projects.length > 1 && <Btn onClick={() => setProjects(projects.filter((_, i) => i !== pi))} v="danger">Remove</Btn>}</div></div>
         <div className="flex gap-2 overflow-x-auto mb-2"><div className="shrink-0 w-28"><F label={jf ? "Upfront Cost" : "Investment"} value={p.inv} onChange={v => { const u = [...projects]; u[pi].inv = v; setProjects(u); }} prefix="$" small /></div>{p.cfs.map((c, ci) => <div key={ci} className="shrink-0 w-24"><F label={`Yr ${ci + 1}`} value={c} onChange={v => { const u = [...projects]; u[pi].cfs[ci] = v; setProjects(u); }} prefix="$" small /></div>)}</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">{[{ l: jf ? "Value Created" : "NPV", v: $(results[pi].npv), g: results[pi].npv >= 0 }, { l: jf ? "Actual Return" : "IRR", v: results[pi].irr.toFixed(1) + "%", g: results[pi].irr > dr }, { l: jf ? "Get Money Back In" : "Payback", v: results[pi].pb === Infinity ? "Never" : results[pi].pb.toFixed(1) + " yrs" }, { l: jf ? "Bang for Buck" : "PI", v: results[pi].pi.toFixed(2) + "x", g: results[pi].pi >= 1 }, { l: jf ? "Annual Value" : "EAA", v: $(results[pi].eaa), g: results[pi].eaa > 0, info: true }].map((m, i) => <div key={i} className="p-2 bg-slate-50 dark:bg-[#15171c] rounded-lg"><div className="text-xs text-slate-400 dark:text-[#828b9a]">{m.l}{m.info && <Tip text={jf ? "Equivalent Annual Annuity — spreads the value evenly across each year. Use this to compare projects with different lifespans." : "EAA normalizes NPV over project life. Compare projects with different durations."} />}</div><div className={`text-base font-bold ${m.g === true ? "text-emerald-600 dark:text-emerald-300" : m.g === false ? "text-red-500" : "text-slate-800 dark:text-[#eef1f6]"}`}>{m.v}</div></div>)}</div></Card>)}
       {/* Project Ranking Table */}
@@ -2844,7 +2847,7 @@ function CapBudget({ jargonFree: jf }) {
           <th className="text-right py-1.5 px-2 text-slate-500 dark:text-[#a3acba]">Years</th>
           <th className="text-right py-1.5 px-2 text-slate-500 dark:text-[#a3acba] font-bold text-indigo-600 dark:text-indigo-300">EAA</th>
         </tr></thead><tbody>{ranked.map((r, i) => (
-          <tr key={i} className={`border-t border-slate-100 dark:border-[#262b33] ${i === 0 ? "bg-emerald-50 dark:bg-emerald-500/10" : ""}`}>
+          <tr key={r.idx} className={`border-t border-slate-100 dark:border-[#262b33] ${i === 0 ? "bg-emerald-50 dark:bg-emerald-500/10" : ""}`}>
             <td className="py-1.5 px-2 font-bold">{i === 0 ? "🏆 1" : i + 1}</td>
             <td className="py-1.5 px-2 font-medium">{r.name}</td>
             <td className="py-1.5 px-2 text-right text-emerald-600 dark:text-emerald-300">{$(r.npv)}</td>
@@ -2856,7 +2859,7 @@ function CapBudget({ jargonFree: jf }) {
         ))}</tbody></table></div>
         {ranked.length > 0 && <div className="mt-2 p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg text-xs text-indigo-700 dark:text-indigo-300">{jf ? `Best choice: ${ranked[0].name} — creates ${$(ranked[0].eaa)} in value per year` : `Recommended: ${ranked[0].name} — highest EAA at ${$(ranked[0].eaa)}/yr`}</div>}
       </Card>}
-      <Btn onClick={() => setProjects([...projects, { name: `Project ${String.fromCharCode(65 + projects.length)}`, inv: 100000, cfs: [25000, 25000, 25000, 25000, 25000] }])} v="secondary" className="w-full">+ Add Project</Btn>
+      <Btn onClick={() => setProjects(ps => [...ps, { id: ps.reduce((m, x) => Math.max(m, x.id || 0), 0) + 1, name: `Project ${String.fromCharCode(65 + ps.length)}`, inv: 100000, cfs: [25000, 25000, 25000, 25000, 25000] }])} v="secondary" className="w-full">+ Add Project</Btn>
       <Assumptions items={[
         { formula: "NPV = Σ CF_t / (1+r)^t - Initial Investment", what: "Sum of present-valued cash flows minus upfront cost. Positive NPV = project creates value at the given discount rate.", assumptions: ["Cash flows are end-of-period (annual)", "Discount rate is constant over the project life — real projects often face changing capital costs", "No reinvestment of intermediate cash flows modeled", "No salvage/terminal value beyond the last cash flow you enter — add it manually as the final year's cash flow"], source: "Brealey, Myers & Allen 'Principles of Corporate Finance'." },
         { formula: "IRR = discount rate that makes NPV = 0 (Newton-Raphson solver)", what: "We iterate to find the rate where present-valued cash flows exactly equal the initial investment.", assumptions: ["Solver starts at 10% and converges in ≤200 iterations; pathological cash flows (multiple sign changes) can produce multiple IRRs", "When IRR > WACC, accept; otherwise reject. For mutually exclusive projects, use NPV not IRR — IRR penalizes scale"] },
@@ -3069,12 +3072,12 @@ function GoalTracker({ jargonFree: jf, onGoalAdded, onGoalReached }) {
   const addGoal = () => { setGoals([...goals, { name: "New Goal", target: 10000, saved: 0, monthly: 200, deadline: 12 }]); if (onGoalAdded) onGoalAdded(); };
   const removeGoal = (i) => setGoals(goals.filter((_, idx) => idx !== i));
   const updateGoal = (i, k, v) => {
-    const u = [...goals];
-    const prevPct = u[i].target > 0 ? u[i].saved / u[i].target : 0;
-    u[i][k] = v;
+    const u = goals.map((g, idx) => idx === i ? { ...g, [k]: v } : g);
+    const prevPct = goals[i].target > 0 ? goals[i].saved / goals[i].target : 0;
     const newPct = u[i].target > 0 ? u[i].saved / u[i].target : 0;
     setGoals(u);
-    if (prevPct < 1 && newPct >= 1 && onGoalReached) onGoalReached();
+    // Only celebrate when progress actually rises across 100% by adding savings — not by lowering the target.
+    if (k === "saved" && prevPct < 1 && newPct >= 1 && onGoalReached) onGoalReached();
   };
 
   const analyzed = goals.map(g => {
@@ -3928,30 +3931,31 @@ function SnapshotHistory({ snapshots, jargonFree: jf, onNav, onSaveNow }) {
 // ============================================================
 function GoalPriority({ jargonFree: jf }) {
   const [items, setItems] = useState([
-    { name: "Credit Card", balance: 5000, rate: 24, type: "debt" },
-    { name: "401(k) Employer Match", balance: 0, rate: 100, type: "match" },
-    { name: "Auto Loan", balance: 12000, rate: 6.5, type: "debt" },
-    { name: "Student Loans", balance: 25000, rate: 5.5, type: "debt" },
-    { name: "Index Fund Investment", balance: 0, rate: 7, type: "invest" },
-    { name: "Mortgage", balance: 280000, rate: 6, type: "debt" },
+    { id: 1, name: "Credit Card", balance: 5000, rate: 24, type: "debt" },
+    { id: 2, name: "401(k) Employer Match", balance: 0, rate: 100, type: "match" },
+    { id: 3, name: "Auto Loan", balance: 12000, rate: 6.5, type: "debt" },
+    { id: 4, name: "Student Loans", balance: 25000, rate: 5.5, type: "debt" },
+    { id: 5, name: "Index Fund Investment", balance: 0, rate: 7, type: "invest" },
+    { id: 6, name: "Mortgage", balance: 280000, rate: 6, type: "debt" },
   ]);
   const [expReturn, setExpReturn] = useState(7);
+  const setItem = (id, k, v) => setItems(its => its.map(x => x.id === id ? { ...x, [k]: v } : x));
   const ranked = items.map(i => { let eff = i.rate; if (i.type === "match") eff = 100; else if (i.type === "invest") eff = expReturn; return { ...i, effective: eff }; }).sort((a, b) => b.effective - a.effective);
   return (<div className="max-w-4xl mx-auto p-8">
     <Title tier="My Money" sub={jf ? "Where should your next dollar go — payoff a debt or invest?" : "Compare debt interest cost vs expected investment return to decide priority"}>Goal Priority — What to Do First</Title>
     <Card className="mb-4"><h3 className="text-sm font-bold text-slate-700 dark:text-[#dde3ec] mb-3">Your debts and opportunities</h3>
-      {items.map((item, i) => (<div key={i} className="grid grid-cols-12 gap-2 mb-2 items-center">
-        <input type="text" value={item.name} onChange={e => { const u = [...items]; u[i].name = e.target.value; setItems(u); }} className="bg-white dark:bg-[#1c1f26] col-span-4 px-2 py-1.5 text-sm border border-slate-200 dark:border-[#323844] rounded" />
-        <input type="number" value={item.balance} onChange={e => { const u = [...items]; u[i].balance = Number(e.target.value); setItems(u); }} placeholder="balance" className="bg-white dark:bg-[#1c1f26] col-span-3 px-2 py-1.5 text-sm border border-slate-200 dark:border-[#323844] rounded" />
-        <input type="number" value={item.rate} onChange={e => { const u = [...items]; u[i].rate = Number(e.target.value); setItems(u); }} placeholder="%" className="bg-white dark:bg-[#1c1f26] col-span-2 px-2 py-1.5 text-sm border border-slate-200 dark:border-[#323844] rounded" />
-        <select value={item.type} onChange={e => { const u = [...items]; u[i].type = e.target.value; setItems(u); }} className="bg-white dark:bg-[#1c1f26] col-span-2 px-2 py-1.5 text-sm border border-slate-200 dark:border-[#323844] rounded"><option value="debt">Debt</option><option value="match">401k Match</option><option value="invest">Invest</option></select>
-        <button onClick={() => setItems(items.filter((_, idx) => idx !== i))} className="col-span-1 text-red-400 hover:text-red-600 text-sm">✕</button>
+      {items.map((item) => (<div key={item.id} className="grid grid-cols-12 gap-2 mb-2 items-center">
+        <input type="text" value={item.name} onChange={e => setItem(item.id, "name", e.target.value)} className="bg-white dark:bg-[#1c1f26] col-span-4 px-2 py-1.5 text-sm border border-slate-200 dark:border-[#323844] rounded" />
+        <input type="number" value={item.balance} onChange={e => setItem(item.id, "balance", Number(e.target.value))} placeholder="balance" className="bg-white dark:bg-[#1c1f26] col-span-3 px-2 py-1.5 text-sm border border-slate-200 dark:border-[#323844] rounded" />
+        <input type="number" value={item.rate} onChange={e => setItem(item.id, "rate", Number(e.target.value))} placeholder="%" className="bg-white dark:bg-[#1c1f26] col-span-2 px-2 py-1.5 text-sm border border-slate-200 dark:border-[#323844] rounded" />
+        <select value={item.type} onChange={e => setItem(item.id, "type", e.target.value)} className="bg-white dark:bg-[#1c1f26] col-span-2 px-2 py-1.5 text-sm border border-slate-200 dark:border-[#323844] rounded"><option value="debt">Debt</option><option value="match">401k Match</option><option value="invest">Invest</option></select>
+        <button onClick={() => setItems(its => its.filter(x => x.id !== item.id))} aria-label="Remove item" className="col-span-1 text-red-400 hover:text-red-600 text-sm">✕</button>
       </div>))}
-      <Btn onClick={() => setItems([...items, { name: "New item", balance: 0, rate: 5, type: "debt" }])} v="secondary">+ Add</Btn>
+      <Btn onClick={() => setItems(its => [...its, { id: its.reduce((m, x) => Math.max(m, x.id || 0), 0) + 1, name: "New item", balance: 0, rate: 5, type: "debt" }])} v="secondary">+ Add</Btn>
     </Card>
     <F label={jf ? "Expected investment return (long-term)" : "Expected investment return (after inflation)"} value={expReturn} onChange={setExpReturn} suffix="%" info="Stock market real return historically ~7%. Use after-tax & inflation-adjusted." />
     <Card className="mt-4 bg-gradient-to-br from-indigo-50 dark:from-indigo-500/10 to-purple-50 dark:to-purple-500/10 border-indigo-200 dark:border-indigo-500/30"><h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-300 mb-3">📋 Priority order — every extra dollar goes here in sequence</h3>
-      {ranked.map((item, i) => (<div key={i} className="flex items-start gap-3 mb-3 last:mb-0 p-3 bg-white dark:bg-[#1c1f26] rounded-lg"><span className={`shrink-0 w-7 h-7 rounded-full font-bold flex items-center justify-center text-sm ${i === 0 ? "bg-emerald-500 text-white" : "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"}`}>{i + 1}</span><div className="flex-1"><div className="flex items-center justify-between mb-0.5"><div className="text-sm font-bold text-slate-800 dark:text-[#eef1f6]">{item.name}</div><Badge color={item.effective >= 15 ? "red" : item.effective >= 8 ? "amber" : "green"}>{item.effective.toFixed(1)}% return</Badge></div><div className="text-xs text-slate-500 dark:text-[#a3acba]">{item.type === "match" ? "401(k) match = 100% instant return on the matched portion. Fund this before anything else, every time." : item.type === "invest" ? `Expected long-term return of ${expReturn}%. Compounds tax-deferred or tax-free in retirement accounts.` : `${item.rate}% interest = your guaranteed effective return when you pay it down. ${item.rate > expReturn ? "Higher than expected investment return — pay this off." : "Below expected investment return — make minimum payments and invest instead."}`}</div></div></div>))}
+      {ranked.map((item, i) => (<div key={item.id} className="flex items-start gap-3 mb-3 last:mb-0 p-3 bg-white dark:bg-[#1c1f26] rounded-lg"><span className={`shrink-0 w-7 h-7 rounded-full font-bold flex items-center justify-center text-sm ${i === 0 ? "bg-emerald-500 text-white" : "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"}`}>{i + 1}</span><div className="flex-1"><div className="flex items-center justify-between mb-0.5"><div className="text-sm font-bold text-slate-800 dark:text-[#eef1f6]">{item.name}</div><Badge color={item.effective >= 15 ? "red" : item.effective >= 8 ? "amber" : "green"}>{item.effective.toFixed(1)}% return</Badge></div><div className="text-xs text-slate-500 dark:text-[#a3acba]">{item.type === "match" ? "401(k) match = 100% instant return on the matched portion. Fund this before anything else, every time." : item.type === "invest" ? `Expected long-term return of ${expReturn}%. Compounds tax-deferred or tax-free in retirement accounts.` : `${item.rate}% interest = your guaranteed effective return when you pay it down. ${item.rate > expReturn ? "Higher than expected investment return — pay this off." : "Below expected investment return — make minimum payments and invest instead."}`}</div></div></div>))}
       <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-500/10 rounded text-xs text-amber-900 dark:text-amber-200"><span className="font-bold">⚠ Rule:</span> Always fund the emergency fund (3-6 months) before investing or extra debt payoff. Cash buffer prevents the next emergency from undoing all this work.</div>
     </Card>
   </div>);
@@ -4394,9 +4398,9 @@ function Vantage() {
       {celebration.show && <div className="fixed inset-0 z-30" onClick={() => setCelebration(c => ({ ...c, show: false }))} />}
       {manageOpen && <ManageModulesPanel allTiers={allTiers} visibleTiers={visibleTiers} onToggle={toggleTierVisibility} onClose={() => setManageOpen(false)} />}
       <GlossarySearch open={glossaryOpen} onClose={() => setGlossaryOpen(false)} onNav={nav} />
-      <CustomizePanel open={customizeOpen} onClose={() => setCustomizeOpen(false)} onApply={applyCustomCategories} currentLabel={customCategories?.label} />
+      <CustomizePanel key={customizeOpen ? "cust-open" : "cust-closed"} open={customizeOpen} onClose={() => setCustomizeOpen(false)} onApply={applyCustomCategories} currentLabel={customCategories?.label} />
       <PlaidStub open={plaidOpen} onClose={() => setPlaidOpen(false)} />
-      <ReminderStub open={reminderOpen} onClose={() => setReminderOpen(false)} />
+      <ReminderStub key={reminderOpen ? "rem-open" : "rem-closed"} open={reminderOpen} onClose={() => setReminderOpen(false)} />
       <LegalModal which={legalOpen} onClose={() => setLegalOpen(null)} />
 
       {sidebarOpen && <div className="md:hidden fixed inset-0 z-30 bg-slate-900/60" onClick={() => setSidebarOpen(false)} />}

@@ -47,7 +47,10 @@ git push origin main
 ```
 GitHub Pages auto-rebuilds in ~30s. Verify: `gh api repos/bishay8/vantage/pages/builds/latest --jq '.status'` should be `built`. Commit messages end with `Co-Authored-By: Claude ...`.
 
-## Current state — LAUNCH READY (~96/100)
+## Current state — LAUNCH READY (~97/100)
+A **live interaction/state-bug audit** (6 module clusters, behavioral not static) then fixed **12 runtime bugs** the static passes missed — including a **CRITICAL** one: editing/deleting a Portfolio holding after sorting hit the *wrong* holding (silent data corruption). Root cause across several modules was the React `key={i}` / index-based-handler anti-pattern. Fixes: stable `id`s + functional setState + key-by-id in Portfolio, GoalPriority, CapBudget; `cc_` namespace on custom-category keys (no more double-count vs base fields like "food"); Bond YTM/Spread NaN guard; hiding the active module's tier now returns Home (no orphan); retirement projector clamps extreme rate/years; goal celebration only fires on added savings (not lowering the target); CustomizePanel/ReminderStub remount on reopen (no stale state). The critical Portfolio fix was verified live (edit-after-sort now targets exactly the right row). NOTE: a dark-mode pass is also in progress in the file (dark: classes) — preserve it.
+
+
 A **financial fact/content audit** (web-verified against IRS/BEA/Fed) then fixed 11 stale or wrong claims (commit after the math pass): 2026 IRS limits were showing 2024 values while the text claimed "2026" — corrected to 401(k) $24,500 / IRA $7,500 / HSA $4,400; savings-rate benchmark 4.5%→8.4% long-run (so it can't re-stale); median income $6,500→$6,977 (2024 Census); inheritance "median" mislabel, an overstated "2-3× goal" claim → ~42%, a 22-29% APR range → ~20-25%, VIX/yield-curve tooltip nuance. The LTCG-rate and NIIT triggers are a known **simplification** (keyed off bracket, not taxable-income/MAGI thresholds) — now disclosed with an in-app caveat + `// FUTURE:` notes; a proper rebuild needs taxable-income + filing-status inputs (see What's NEXT). Median net worth $192k confirmed correct.
 
 
