@@ -55,7 +55,7 @@ const StatCard = ({ label, value, sign = "neutral", sub, size = "lg" }) => {
 };
 const Title = ({ children, sub, tier }) => { const th = tier ? tierTheme(tier) : null; return (<div className="mb-6">{th ? (<div className={`-mx-2 px-4 py-3 mb-3 rounded-xl bg-gradient-to-r ${th.grad}`}><div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${th.dot}`} /><span className={`text-xs font-bold uppercase tracking-wider ${th.text}`}>{tier}</span></div><h2 className="text-2xl font-bold text-slate-800 mt-1">{children}</h2>{sub && <p className="text-sm text-slate-500 mt-1">{sub}</p>}</div>) : (<><h2 className="text-2xl font-bold text-slate-800">{children}</h2>{sub && <p className="text-sm text-slate-500 mt-1">{sub}</p>}</>)}</div>); };
 // WhyMatters: collapsible "Why does this matter?" with plain-English implication.
-const WhyMatters = ({ text }) => { const [open, setOpen] = useState(false); return (<div className="mt-1"><button onClick={() => setOpen(!open)} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium">{open ? "▾ Why does this matter?" : "▸ Why does this matter?"}</button>{open && <div className="mt-1 text-xs text-slate-600 bg-indigo-50 border border-indigo-100 rounded-lg p-2 leading-relaxed">{text}</div>}</div>); };
+const WhyMatters = ({ text }) => { const [open, setOpen] = useState(false); return (<div className="mt-1"><button onClick={() => setOpen(!open)} aria-expanded={open} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium rounded outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"><span aria-hidden="true">{open ? "▾ " : "▸ "}</span>Why does this matter?</button>{open && <div className="mt-1 text-xs text-slate-600 bg-indigo-50 border border-indigo-100 rounded-lg p-2 leading-relaxed">{text}</div>}</div>); };
 // Celebrate: lightweight Tailwind-only dot burst (uses animate-ping + animate-bounce).
 const Celebrate = ({ show, message, tone = "emerald" }) => {
   if (!show) return null;
@@ -4170,7 +4170,7 @@ function ManageModulesPanel({ allTiers, visibleTiers, onToggle, onClose }) {
 }
 
 // Engagement-based health score (Round 2 #10).
-// TODO: replace with secured API-driven score (SOC 2 Type 2 endpoints) once backend is wired.
+// FUTURE: replace with secured API-driven score (SOC 2 Type 2 endpoints) once backend is wired.
 function computeHealthScore(engagement) {
   let s = 0;
   const v = engagement.visited || {};
@@ -4238,7 +4238,7 @@ function Vantage() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const applyCustomCategories = (cats) => { setCustomCategories(cats); };
   // Snapshots — in-memory until SOC 2 backend persists them.
-  // TODO: replace setSnapshots with backend POST /snapshots
+  // FUTURE: replace setSnapshots with backend POST /snapshots
   const [snapshots, setSnapshots] = useState([]);
   const saveSnapshot = (data) => setSnapshots(s => [...s, { id: Date.now(), ts: new Date().toISOString().slice(0, 10), ...data }]);
   // Locale — currency + benchmarks per region.
