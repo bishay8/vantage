@@ -1113,7 +1113,10 @@ function QuickTools() {
     for (let y = 0; y < rvb.years; y++) { totalRent += rent * 12; rent *= (1 + rvb.rentIncrease / 100); }
     const totalOwn = monthlyOwn * 12 * rvb.years + down;
     const homeVal = rvb.homePrice * Math.pow(1 + rvb.appreciation / 100, rvb.years);
-    const equity = homeVal - loan * 0.85;
+    // True remaining mortgage balance after `years` of payments (not a flat 0.85 factor).
+    const k = Math.min(rvb.years * 12, n);
+    const remainingLoan = mr > 0 ? loan * (Math.pow(1 + mr, n) - Math.pow(1 + mr, k)) / (Math.pow(1 + mr, n) - 1) : loan * (1 - k / n);
+    const equity = homeVal - Math.max(remainingLoan, 0);
     const netOwn = totalOwn - equity;
     return { monthlyOwn, mp, down, totalRent, totalOwn, homeVal, equity, netOwn, winner: netOwn < totalRent ? "Buy" : "Rent" };
   }, [rvb]);
@@ -2341,7 +2344,22 @@ function TaxEstimator({ jargonFree: jf }) {
   const netGain = totalGains + totalLosses;
   const lossDeduction = Math.min(Math.abs(totalLosses), 3000 + totalGains); // $3k annual loss deduction limit
   const taxableGain = Math.max(netGain, -3000); // Can deduct up to $3k of losses from ordinary income
-  const estimatedTax = selling.filter(h => h.gain > 0).reduce((s, h) => s + h.tax, 0);
+  // Tax the NETTED gains, not just the winners — losses on sold holdings offset gains.
+  // Net within each holding-period class first, then cross-offset; tax remainder at the gaining class's rate.
+  const netST = selling.filter(h => !h.isLongTerm).reduce((s, h) => s + h.gain, 0);
+  const netLT = selling.filter(h => h.isLongTerm).reduce((s, h) => s + h.gain, 0);
+  const stRate = (stcgRate + stateRate + (stcgRate > 0 ? niit : 0)) / 100;
+  const ltRate = (ltcgRate + stateRate + (ltcgRate > 0 ? niit : 0)) / 100;
+  let estimatedTax;
+  if (netST >= 0 && netLT >= 0) {
+    estimatedTax = netST * stRate + netLT * ltRate;          // both classes gained
+  } else if (netST < 0 && netLT < 0) {
+    estimatedTax = 0;                                         // both classes lost
+  } else {                                                   // one gained, one lost → offset
+    const combined = netST + netLT;
+    estimatedTax = combined <= 0 ? 0 : combined * (netST > 0 ? stRate : ltRate);
+  }
+  estimatedTax = Math.max(estimatedTax, 0);
   const taxSaved = Math.abs(totalLosses) * (taxBracket / 100); // Savings from harvesting losses
 
   // Harvest opportunities (holdings not being sold that have losses)
@@ -2567,7 +2585,7 @@ function Loans({ jargonFree: jf }) {
   while (bal > 0 && moE < n * 2) { const i = bal * mr; bal -= Math.min(mp - i + l.extra, bal); intE += i; moE++; }
   const saved = totalInt - intE;
   const sched = []; bal = l.principal;
-  for (let m = 1; m <= n && bal > 0; m++) { const i = bal * mr; const p = Math.min(mp - i + l.extra, bal); bal -= p; if (m <= 4 || m > n - 2 || m % 60 === 0) sched.push({ m, pay: mp + l.extra, p, i, bal: Math.max(bal, 0) }); }
+  for (let m = 1; m <= n && bal > 0; m++) { const i = bal * mr; const p = Math.min(mp - i + l.extra, bal); bal -= p; if (m <= 4 || m > n - 2 || m % 60 === 0) sched.push({ m, pay: i + p, p, i, bal: Math.max(bal, 0) }); }
   return (
     <div className="max-w-4xl mx-auto p-8">
       <Title tier="My Money" sub={jf ? "See what any loan really costs you" : "Loan payments, total cost, and extra payment impact"}>Loan Calculator</Title>
