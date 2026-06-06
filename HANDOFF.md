@@ -47,8 +47,14 @@ git push origin main
 ```
 GitHub Pages auto-rebuilds in ~30s. Verify: `gh api repos/bishay8/vantage/pages/builds/latest --jq '.status'` should be `built`. Commit messages end with `Co-Authored-By: Claude ...`.
 
-## Current state — LAUNCH READY (91/100)
-A full launch-optimization pass just shipped (4 commits). An independent multi-agent verification audit scored it **91/100, ready to share, zero must-fix blockers**. What's DONE:
+## Current state — LAUNCH READY (~94/100)
+A full launch-optimization pass shipped, then a **deep financial-correctness audit** independently re-derived all 10 formula groups. **7 passed clean** (Black-Scholes & Greeks, NPV/IRR/Payback/PI/EAA, bond YTM, CAPM/WACC/DCF, Monte Carlo & retirement compounding, HHI/diversification/P&L, stress-test & runway — all verified against concrete test cases). **3 confirmed bugs were fixed** (commit 11c8199):
+- Tax Estimator summed only winners, ignoring losses on sold holdings → now nets ST/LT gains & losses (verified: $3,129→$2,691 on sample).
+- Rent-vs-Buy equity used a hardcoded `0.85` loan factor → now the true amortized remaining balance (~$220k→~$203k on sample).
+- Loan amortization final-row showed the constant payment → now the actual final payment.
+The core pricing/valuation engines were already correct; no formula was rewritten, only the 3 buggy lines. **The math is now independently verified.**
+
+Earlier verification audit scored **91/100, ready to share, zero blockers**. What's DONE:
 - **Mobile responsive** (the owner's #1 complaint): all grids collapse to 1-col on phones, all 7 wide tables + portfolio rows wrap in `overflow-x-auto`, hamburger sidebar overlay. Zero horizontal overflow at 375px.
 - **No `$NaN`/`$Infinity`**: root guard in the `$()` formatter (`!Number.isFinite(n) → "—"`) plus YTM / stress-test / loan / break-even edge-case guards.
 - **`ErrorBoundary`** wraps every module (`key={active}`, resets on nav) — no white-screens.
