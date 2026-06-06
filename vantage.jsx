@@ -4,6 +4,27 @@ const { useState, useMemo } = React;
 // VANTAGE v5 — Financial Intelligence for Everyone
 // ============================================================
 
+// Error boundary so one bad module can never white-screen the whole app.
+// Class component is required for componentDidCatch — uses React.Component, no new imports.
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error) { this.lastError = error; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-lg mx-auto mt-20 p-8 text-center">
+          <div className="text-5xl mb-3">🙏</div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Something went wrong on this screen</h2>
+          <p className="text-sm text-slate-500 mb-5">Your other data is safe. This is usually fixed by going back home and reopening the module.</p>
+          <button onClick={() => { this.setState({ hasError: false }); if (this.props.onReset) this.props.onReset(); }} className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">Return to Home</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // --- Tier color theme (used by sidebar, Title banners, dots) ---
 const TIER_COLORS = {
   "Home": { dot: "bg-sky-400", grad: "from-sky-50 to-white", bar: "bg-sky-500", text: "text-sky-700", soft: "bg-sky-50", border: "border-sky-200", glow: "shadow-sky-500/30" },
@@ -18,7 +39,7 @@ const TIER_COLORS = {
 const tierTheme = (t) => TIER_COLORS[t] || TIER_COLORS["About Me"];
 
 // --- Shared UI ---
-const Tip = ({ text }) => { const [s, setS] = useState(false); return <span className="relative inline-block ml-1"><button className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 text-xs inline-flex items-center justify-center hover:bg-indigo-100 hover:text-indigo-600 cursor-help" onMouseEnter={() => setS(true)} onMouseLeave={() => setS(false)} onClick={() => setS(!s)}>i</button>{s && <div className="absolute z-50 bottom-6 left-1/2 -translate-x-1/2 w-72 bg-slate-900 text-white text-xs rounded-lg p-3 shadow-2xl leading-relaxed pointer-events-none">{text}<div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" /></div>}</span>; };
+const Tip = ({ text }) => { const [s, setS] = useState(false); return <span className="relative inline-block ml-1"><button type="button" aria-label="More information" aria-expanded={s} className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 text-xs inline-flex items-center justify-center hover:bg-indigo-100 hover:text-indigo-600 cursor-help outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" onMouseEnter={() => setS(true)} onMouseLeave={() => setS(false)} onClick={() => setS(!s)} onFocus={() => setS(true)} onBlur={() => setS(false)}>i</button>{s && <div className="absolute z-50 bottom-6 left-1/2 -translate-x-1/2 w-64 md:w-72 bg-slate-900 text-white text-xs rounded-lg p-3 shadow-2xl leading-relaxed pointer-events-none">{text}<div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" /></div>}</span>; };
 const Card = ({ children, className = "", onClick, accent }) => { const accentBorder = accent === "good" ? "border-l-4 border-l-emerald-400" : accent === "bad" ? "border-l-4 border-l-red-400" : accent === "neutral" ? "border-l-4 border-l-sky-400" : ""; return <div onClick={onClick} className={`bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow border border-slate-100 ${accentBorder} ${className}`}>{children}</div>; };
 // StatCard: large hero number with tinted bg by sign and a thin colored underline.
 const StatCard = ({ label, value, sign = "neutral", sub, size = "lg" }) => {
@@ -54,25 +75,27 @@ const Celebrate = ({ show, message, tone = "emerald" }) => {
 };
 // Nudge: full-width colored banner suggesting a next step.
 const Nudge = ({ tone = "indigo", text, ctaLabel, onClick }) => { const tones = { indigo: "bg-indigo-50 border-indigo-200 text-indigo-900", amber: "bg-amber-50 border-amber-200 text-amber-900", emerald: "bg-emerald-50 border-emerald-200 text-emerald-900" }; const btn = { indigo: "bg-indigo-600 hover:bg-indigo-700", amber: "bg-amber-500 hover:bg-amber-600", emerald: "bg-emerald-600 hover:bg-emerald-700" }; return (<div className={`mt-6 p-4 rounded-xl border-2 flex items-center justify-between gap-4 ${tones[tone]}`}><div className="text-sm font-medium">{text}</div>{onClick && <button onClick={onClick} className={`px-4 py-2 ${btn[tone]} text-white text-sm font-semibold rounded-lg whitespace-nowrap`}>{ctaLabel} →</button>}</div>); };
-const F = ({ label, value, onChange, prefix, suffix, info, type = "number", small, options, placeholder, hint }) => (<div className={small ? "mb-1.5" : "mb-2.5"}><label className="block text-xs font-medium text-slate-500 mb-1 flex items-center">{label}{info && <Tip text={info} />}</label>{options ? <select value={value} onChange={e => onChange(e.target.value)} className={`w-full px-2 ${small ? "py-1" : "py-1.5"} text-sm text-slate-800 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400`}>{options.map(o => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}</select> : <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400">{prefix && <span className="pl-2 text-xs text-slate-400">{prefix}</span>}<input type={type} inputMode={type === "number" ? "decimal" : undefined} value={value === 0 && placeholder ? "" : value} placeholder={placeholder} onChange={e => onChange(type === "number" ? (Number(e.target.value) || 0) : e.target.value)} className={`w-full px-2 ${small ? "py-1" : "py-1.5"} text-sm text-slate-800 outline-none bg-transparent placeholder:text-slate-300`} />{suffix && <span className="pr-2 text-xs text-slate-400">{suffix}</span>}</div>}{hint && <div className="text-[10px] text-slate-400 mt-0.5 italic">{hint}</div>}</div>);
+const F = ({ label, value, onChange, prefix, suffix, info, type = "number", small, options, placeholder, hint }) => (<div className={small ? "mb-1.5" : "mb-2.5"}><label className="block text-xs font-medium text-slate-500 mb-1 flex items-center">{label}{info && <Tip text={info} />}</label>{options ? <select value={value} onChange={e => onChange(e.target.value)} className={`w-full px-2 ${small ? "py-1" : "py-1.5"} text-sm text-slate-800 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400`}>{options.map(o => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}</select> : <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-400">{prefix && <span className="pl-2 text-xs text-slate-400">{prefix}</span>}<input type={type} inputMode={type === "number" ? "decimal" : undefined} value={value === 0 && placeholder ? "" : value} placeholder={placeholder} onChange={e => onChange(type === "number" ? (Number(e.target.value) || 0) : e.target.value)} className={`w-full px-2 ${small ? "py-1" : "py-1.5"} text-sm text-slate-800 outline-none bg-transparent placeholder:text-slate-300`} />{suffix && <span className="pr-2 text-xs text-slate-400">{suffix}</span>}</div>}{hint && <div className="text-xs text-slate-400 mt-0.5 italic">{hint}</div>}</div>);
 // RangeHint: shows "Typical: $X–Y" inline. Helps beginners gauge what's normal.
-const RangeHint = ({ label = "Typical", low, high, unit = "$", note }) => (<div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1"><span className="font-semibold text-slate-500">{label}:</span><span>{unit === "$" ? `$${low.toLocaleString()}–$${high.toLocaleString()}` : `${low}–${high}${unit}`}</span>{note && <span className="text-slate-400">— {note}</span>}</div>);
+const RangeHint = ({ label = "Typical", low, high, unit = "$", note }) => (<div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1"><span className="font-semibold text-slate-500">{label}:</span><span>{unit === "$" ? `$${low.toLocaleString()}–$${high.toLocaleString()}` : `${low}–${high}${unit}`}</span>{note && <span className="text-slate-400">— {note}</span>}</div>);
 // LossFrame: concrete "without X, here's what could go wrong" warning. Loss-aversion framing.
 const LossFrame = ({ text }) => (<div className="mt-2 p-2.5 bg-red-50 border-l-2 border-red-300 rounded text-xs text-red-700 leading-relaxed"><span className="font-bold">⚠ Worst case:</span> {text}</div>);
 // RecoveryFrame: emotional positive counterweight — "here's a way forward" for users in a bad spot.
 const RecoveryFrame = ({ steps, title = "Here's a way forward" }) => (<div className="mt-2 p-3 bg-emerald-50 border-l-2 border-emerald-300 rounded text-xs text-emerald-900 leading-relaxed"><div className="font-bold mb-1.5">🌱 {title}</div><ol className="list-decimal ml-4 space-y-1">{steps.map((s, i) => <li key={i}>{s}</li>)}</ol></div>);
 // EstimateHelper: "I don't know — estimate this for me" link, filled in via a rule of thumb.
-const EstimateHelper = ({ label = "Don't know? Estimate it for me", onEstimate, note }) => (<button onClick={onEstimate} className="text-[10px] text-indigo-500 hover:text-indigo-700 font-medium mt-0.5 inline-flex items-center gap-1">💡 {label}{note && <span className="text-slate-400 font-normal">({note})</span>}</button>);
+const EstimateHelper = ({ label = "Don't know? Estimate it for me", onEstimate, note }) => (<button onClick={onEstimate} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium mt-0.5 inline-flex items-center gap-1">💡 {label}{note && <span className="text-slate-400 font-normal">({note})</span>}</button>);
 // PercentOfIncome: live "X% of income" badge — appears next to spending fields once income > 0.
-const PercentOfIncome = ({ value, income, warnAbove }) => { if (!income || income <= 0 || !value) return null; const pct = (value / income) * 100; const tone = warnAbove && pct >= warnAbove ? "text-red-600 bg-red-50" : pct > 30 ? "text-amber-700 bg-amber-50" : "text-slate-500 bg-slate-50"; return (<div className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded mt-0.5 ${tone}`}>{pct.toFixed(0)}% of income{warnAbove && pct >= warnAbove ? " — high" : ""}</div>); };
+const PercentOfIncome = ({ value, income, warnAbove }) => { if (!income || income <= 0 || !value) return null; const pct = (value / income) * 100; const tone = warnAbove && pct >= warnAbove ? "text-red-600 bg-red-50" : pct > 30 ? "text-amber-700 bg-amber-50" : "text-slate-500 bg-slate-50"; return (<div className={`inline-block text-xs font-semibold px-1.5 py-0.5 rounded mt-0.5 ${tone}`}>{pct.toFixed(0)}% of income{warnAbove && pct >= warnAbove ? " — high" : ""}</div>); };
 // ActionStep: concrete handoff — names a specific tool/bank/action with a one-line how-to.
 const ActionStep = ({ step, tool, how }) => (<div className="flex items-start gap-2 text-xs mb-1.5"><span className="shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">{step}</span><div><div className="font-semibold text-slate-700">{tool}</div><div className="text-slate-500">{how}</div></div></div>);
 // ConfidenceLabel: clarifies forecast precision. Forecasts (DCF/NPV/retirement) are not exact math.
-const ConfidenceLabel = ({ level = "estimate", note }) => { const cfg = { estimate: { label: "Rough estimate (±25%)", bg: "bg-amber-50 border-amber-200 text-amber-700" }, valuation: { label: "Fair-value range (±30%)", bg: "bg-amber-50 border-amber-200 text-amber-700" }, illustrative: { label: "Illustrative — actual depends on severity", bg: "bg-amber-50 border-amber-200 text-amber-700" }, exact: { label: "Exact calculation", bg: "bg-emerald-50 border-emerald-200 text-emerald-700" } }; const c = cfg[level] || cfg.estimate; return (<div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider ${c.bg}`}><span>{c.label}</span>{note && <Tip text={note} />}</div>); };
+const ConfidenceLabel = ({ level = "estimate", note }) => { const cfg = { estimate: { label: "Rough estimate (±25%)", bg: "bg-amber-50 border-amber-200 text-amber-700" }, valuation: { label: "Fair-value range (±30%)", bg: "bg-amber-50 border-amber-200 text-amber-700" }, illustrative: { label: "Illustrative — actual depends on severity", bg: "bg-amber-50 border-amber-200 text-amber-700" }, exact: { label: "Exact calculation", bg: "bg-emerald-50 border-emerald-200 text-emerald-700" } }; const c = cfg[level] || cfg.estimate; return (<div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-bold uppercase tracking-wider ${c.bg}`}><span>{c.label}</span>{note && <Tip text={note} />}</div>); };
+// AdviceNote: point-of-use "educational, not advice" disclaimer for high-risk modules (signals, options, tax).
+const AdviceNote = ({ kind = "financial" }) => { const text = kind === "tax" ? "Educational estimates only — not tax advice. Tax rules vary by situation and change yearly. Confirm with a CPA or tax professional before acting." : kind === "trading" ? "Educational only — not a recommendation to buy or sell. Signals and option values are simplified and can be wrong. You can lose money trading." : "Educational only — not financial advice. Vantage doesn't know your full situation. Verify with a licensed professional before making money decisions."; return (<div className="mb-4 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2"><span aria-hidden="true">⚠</span><span>{text}</span></div>); };
 // EmergencyBucket: visual bucket filling up. Months of expenses → 1 to 6 month markers.
-const EmergencyBucket = ({ months, target = 6 }) => { const fill = Math.min(months / target, 1) * 100; const color = months >= 3 ? "bg-emerald-400" : months >= 1 ? "bg-amber-400" : "bg-red-400"; return (<div className="flex items-end gap-3"><div className="relative w-16 h-24 border-2 border-slate-300 rounded-b-lg overflow-hidden bg-slate-50"><div className={`absolute bottom-0 left-0 right-0 transition-all duration-700 ${color}`} style={{ height: `${fill}%` }} /><div className="absolute top-1/2 left-0 right-0 border-t border-slate-300 border-dashed" /><span className="absolute top-1/2 -mt-2 right-full mr-1 text-[9px] text-slate-400">3mo</span></div><div className="text-xs text-slate-600"><div className="font-bold text-slate-700">{months.toFixed(1)} of {target} mo</div><div className="text-[10px] text-slate-500 mt-0.5">{months < 1 ? "Almost empty — top priority" : months < 3 ? "Below minimum" : months < 6 ? "Building" : "Fully stocked"}</div></div></div>); };
+const EmergencyBucket = ({ months, target = 6 }) => { const fill = Math.min(months / target, 1) * 100; const color = months >= 3 ? "bg-emerald-400" : months >= 1 ? "bg-amber-400" : "bg-red-400"; return (<div className="flex items-end gap-3"><div className="relative w-16 h-24 border-2 border-slate-300 rounded-b-lg overflow-hidden bg-slate-50"><div className={`absolute bottom-0 left-0 right-0 transition-all duration-700 ${color}`} style={{ height: `${fill}%` }} /><div className="absolute top-1/2 left-0 right-0 border-t border-slate-300 border-dashed" /><span className="absolute top-1/2 -mt-2 right-full mr-1 text-xs text-slate-400">3mo</span></div><div className="text-xs text-slate-600"><div className="font-bold text-slate-700">{months.toFixed(1)} of {target} mo</div><div className="text-xs text-slate-500 mt-0.5">{months < 1 ? "Almost empty — top priority" : months < 3 ? "Below minimum" : months < 6 ? "Building" : "Fully stocked"}</div></div></div>); };
 // DebtScale: visual scale tipping based on assets vs debts.
-const DebtScale = ({ assets, debts }) => { const total = assets + debts; const tilt = total > 0 ? ((assets - debts) / total) * 15 : 0; return (<div className="flex flex-col items-center gap-1"><div className="relative w-44 h-20"><div className="absolute top-8 left-1/2 -translate-x-1/2 w-1 h-12 bg-slate-400 rounded" /><div className="absolute top-8 left-1/2 -translate-x-1/2 origin-top transition-transform duration-700" style={{ transform: `translateX(-50%) rotate(${-tilt}deg)` }}><div className="w-36 h-1 bg-slate-500 rounded -ml-[72px]" /><div className="absolute -top-6 -left-[72px] text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">${(assets/1000).toFixed(0)}k</div><div className="absolute -top-6 right-[-72px] text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">${(debts/1000).toFixed(0)}k</div></div></div><div className="flex gap-12 text-[10px] text-slate-500"><span>Assets</span><span>Debts</span></div></div>); };
+const DebtScale = ({ assets, debts }) => { const total = assets + debts; const tilt = total > 0 ? ((assets - debts) / total) * 15 : 0; return (<div className="flex flex-col items-center gap-1"><div className="relative w-44 h-20"><div className="absolute top-8 left-1/2 -translate-x-1/2 w-1 h-12 bg-slate-400 rounded" /><div className="absolute top-8 left-1/2 -translate-x-1/2 origin-top transition-transform duration-700" style={{ transform: `translateX(-50%) rotate(${-tilt}deg)` }}><div className="w-36 h-1 bg-slate-500 rounded -ml-[72px]" /><div className="absolute -top-6 -left-[72px] text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">${(assets/1000).toFixed(0)}k</div><div className="absolute -top-6 right-[-72px] text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">${(debts/1000).toFixed(0)}k</div></div></div><div className="flex gap-12 text-xs text-slate-500"><span>Assets</span><span>Debts</span></div></div>); };
 // SampleBanner: tells users the module is pre-filled with example data they should overwrite.
 const SampleBanner = ({ onReset }) => { const [hidden, setHidden] = useState(false); if (hidden) return null; return (<div className="mb-4 p-3 bg-sky-50 border border-sky-200 rounded-lg flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-xs text-sky-900"><span className="text-base">💡</span><span><span className="font-bold">These are example numbers.</span> Replace them with your own to see your real picture.</span></div><div className="flex gap-2 shrink-0">{onReset && <button onClick={onReset} className="text-xs text-sky-700 hover:text-sky-900 font-semibold border border-sky-300 rounded px-2 py-1">Clear all</button>}<button onClick={() => setHidden(true)} className="text-sky-400 hover:text-sky-700 text-sm">✕</button></div></div>); };
 
@@ -83,7 +106,7 @@ const Coachmark = ({ steps, dismissed, onDismiss }) => {
   const s = steps[step];
   return (<div className="mb-4 relative p-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl text-white shadow-lg">
     <button onClick={onDismiss} className="absolute top-2 right-2 text-white/70 hover:text-white text-sm">✕ Skip tour</button>
-    <div className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Quick tour — step {step + 1} of {steps.length}</div>
+    <div className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Quick tour — step {step + 1} of {steps.length}</div>
     <div className="text-base font-bold mb-1">{s.title}</div>
     <div className="text-sm opacity-90 mb-3">{s.body}</div>
     <div className="flex items-center justify-between">
@@ -134,7 +157,7 @@ const GlossarySearch = ({ open, onClose, onNav }) => {
   if (!open) return null;
   const ql = q.toLowerCase();
   const filtered = ql ? GLOSSARY.filter(g => g.term.toLowerCase().includes(ql) || g.short.toLowerCase().includes(ql)) : GLOSSARY;
-  return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-start justify-center pt-20 p-4" onClick={onClose}>
+  return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-start justify-center pt-20 p-4" onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()}>
     <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden">
       <div className="p-4 border-b border-slate-100 flex items-center gap-2">
         <span className="text-slate-400">🔍</span>
@@ -146,7 +169,7 @@ const GlossarySearch = ({ open, onClose, onNav }) => {
           filtered.map((g, i) => (<button key={i} onClick={() => { onNav(g.nav); onClose(); }} className="w-full px-4 py-3 text-left hover:bg-indigo-50 border-b border-slate-50 last:border-0">
             <div className="text-sm font-bold text-slate-800">{g.term}</div>
             <div className="text-xs text-slate-500 mt-0.5">{g.short}</div>
-            <div className="text-[10px] text-indigo-500 mt-1">Open in {g.nav} →</div>
+            <div className="text-xs text-indigo-500 mt-1">Open in {g.nav} →</div>
           </button>))}
       </div>
     </div>
@@ -197,11 +220,12 @@ const LegalModal = ({ which, onClose }) => {
   if (!which) return null;
   const doc = LEGAL_TEXT[which];
   if (!doc) return null;
-  return (<div className="fixed inset-0 z-[60] bg-slate-900/70 flex items-start justify-center p-4 pt-12 overflow-y-auto" onClick={onClose}>
+  return (<div className="fixed inset-0 z-[60] bg-slate-900/70 flex items-start justify-center p-4 pt-12 overflow-y-auto" onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()}>
     <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden mb-12">
+      {/* NOTE TO DEV: Terms/Privacy/Disclaimer below are template text. Have them lawyer-reviewed before public launch. (Intentionally not shown to users.) */}
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white">
-        <div><h3 className="text-lg font-bold text-slate-800">{doc.title}</h3><p className="text-[10px] text-slate-400 mt-0.5">Last updated: {doc.lastUpdated} · <span className="text-red-600 font-semibold">⚠ TEMPLATE TEXT — replace with lawyer-reviewed copy before shipping to real users</span></p></div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+        <div><h3 className="text-lg font-bold text-slate-800">{doc.title}</h3><p className="text-xs text-slate-500 mt-0.5">Last updated: {doc.lastUpdated}</p></div>
+        <button onClick={onClose} aria-label={`Close ${doc.title}`} onKeyDown={e => e.key === "Escape" && onClose()} className="text-slate-500 hover:text-slate-700 text-lg rounded outline-none focus:ring-2 focus:ring-indigo-400">✕</button>
       </div>
       <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
         {doc.body.map(([h, p], i) => (<div key={i} className="mb-4 last:mb-0">
@@ -219,16 +243,16 @@ const Assumptions = ({ items, title = "How we calculate this" }) => {
   const [open, setOpen] = useState(false);
   return (<div className="mt-6 border border-slate-200 rounded-xl bg-slate-50">
     <button onClick={() => setOpen(!open)} className="w-full px-4 py-3 flex items-center justify-between text-left">
-      <div className="flex items-center gap-2"><span className="text-base">📐</span><span className="text-sm font-bold text-slate-700">{title}</span><span className="text-[10px] text-slate-400">(transparency — see exactly what's assumed)</span></div>
+      <div className="flex items-center gap-2"><span className="text-base">📐</span><span className="text-sm font-bold text-slate-700">{title}</span><span className="text-xs text-slate-400">(transparency — see exactly what's assumed)</span></div>
       <span className="text-slate-400 text-sm">{open ? "▲" : "▼"}</span>
     </button>
     {open && (<div className="px-4 pb-4 border-t border-slate-200 bg-white">
-      <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 my-3">⚠ These calculations are estimates. Real-world results depend on inputs and assumptions that may not match your situation. Treat outputs as educational, not as advice.</p>
+      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 my-3">⚠ These calculations are estimates. Real-world results depend on inputs and assumptions that may not match your situation. Treat outputs as educational, not as advice.</p>
       {items.map((item, i) => (<div key={i} className="mb-3 last:mb-0">
         <div className="text-xs font-bold text-slate-700 mb-1">{item.formula}</div>
         <div className="text-xs text-slate-600 mb-1">{item.what}</div>
-        {item.assumptions && <ul className="text-[11px] text-slate-500 list-disc ml-4 space-y-0.5">{item.assumptions.map((a, j) => <li key={j}>{a}</li>)}</ul>}
-        {item.source && <div className="text-[10px] text-slate-400 mt-1 italic">Source: {item.source}</div>}
+        {item.assumptions && <ul className="text-xs text-slate-500 list-disc ml-4 space-y-0.5">{item.assumptions.map((a, j) => <li key={j}>{a}</li>)}</ul>}
+        {item.source && <div className="text-xs text-slate-400 mt-1 italic">Source: {item.source}</div>}
       </div>))}
     </div>)}
   </div>);
@@ -247,10 +271,10 @@ const LOCALES = {
 const LocaleSwitcher = ({ locale, onChange }) => (<select value={locale} onChange={e => onChange(e.target.value)} className="text-xs bg-slate-100 hover:bg-slate-200 rounded-lg px-2 py-1.5 outline-none cursor-pointer">{Object.values(LOCALES).map(l => <option key={l.code} value={l.code}>{l.flag} {l.code}</option>)}</select>);
 
 // PlaidStub: aspirational UI showing what bank-account aggregation will look like once SOC 2 backend is live.
-const PlaidStub = ({ open, onClose }) => { if (!open) return null; return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={onClose}><div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"><div className="p-6"><h3 className="text-lg font-bold text-slate-800 mb-1">🏦 Connect Your Bank</h3><p className="text-xs text-slate-500 mb-4">Stop typing in numbers — let Vantage read live balances and transactions from your bank, broker, and credit card.</p><div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-900"><div className="font-bold mb-1">⚠ Backend required</div>This needs the SOC 2 Type 2 server to talk to Plaid securely. Coming with the backend rollout — your interest is recorded.</div><div className="space-y-2 mb-4 opacity-50 pointer-events-none">{["Chase", "Wells Fargo", "Fidelity", "Robinhood", "Coinbase"].map(b => <div key={b} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg text-sm"><span>{b}</span><span className="text-xs text-slate-400">Connect →</span></div>)}</div><button onClick={onClose} className="w-full py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">Got it — notify me when this lands</button></div></div></div>); };
+const PlaidStub = ({ open, onClose }) => { if (!open) return null; return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()}><div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"><div className="p-6"><h3 className="text-lg font-bold text-slate-800 mb-1">🏦 Connect Your Bank</h3><p className="text-xs text-slate-500 mb-4">Stop typing in numbers — let Vantage read live balances and transactions from your bank, broker, and credit card.</p><div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-900"><div className="font-bold mb-1">⚠ Backend required</div>This needs the SOC 2 Type 2 server to talk to Plaid securely. Coming with the backend rollout — your interest is recorded.</div><div className="space-y-2 mb-4 opacity-50 pointer-events-none">{["Chase", "Wells Fargo", "Fidelity", "Robinhood", "Coinbase"].map(b => <div key={b} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg text-sm"><span>{b}</span><span className="text-xs text-slate-400">Connect →</span></div>)}</div><button onClick={onClose} className="w-full py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">Got it — notify me when this lands</button></div></div></div>); };
 
 // ReminderStub: aspirational reminder-loop UI. Stores the intent locally; backend will send emails/push.
-const ReminderStub = ({ open, onClose }) => { const [days, setDays] = useState(30); const [channel, setChannel] = useState("email"); const [done, setDone] = useState(false); if (!open) return null; return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={onClose}><div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden p-6">{done ? (<><h3 className="text-lg font-bold text-emerald-700 mb-1">✓ Reminder set</h3><p className="text-xs text-slate-500 mb-4">We'll {channel === "email" ? "email" : "push-notify"} you in {days} days to check in on your finances. (Coming with the backend rollout.)</p><button onClick={() => { setDone(false); onClose(); }} className="w-full py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">Done</button></>) : (<><h3 className="text-lg font-bold text-slate-800 mb-1">⏰ Set a Reminder</h3><p className="text-xs text-slate-500 mb-4">Beginners forget to update their numbers. Let us nudge you.</p><label className="text-xs font-semibold text-slate-600 block mb-1">Remind me in</label><div className="flex gap-2 mb-3">{[7, 14, 30, 90].map(d => <button key={d} onClick={() => setDays(d)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${days === d ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{d} days</button>)}</div><label className="text-xs font-semibold text-slate-600 block mb-1">Via</label><div className="flex gap-2 mb-4">{[["email", "📧 Email"], ["push", "🔔 Push"]].map(([k, l]) => <button key={k} onClick={() => setChannel(k)} className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${channel === k ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{l}</button>)}</div><div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-4 text-[10px] text-amber-900">Backend required — your preference is queued for when the email/push service is live.</div><div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200">Cancel</button><button onClick={() => setDone(true)} className="flex-1 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">Set Reminder</button></div></>)}</div></div>); };
+const ReminderStub = ({ open, onClose }) => { const [days, setDays] = useState(30); const [channel, setChannel] = useState("email"); const [done, setDone] = useState(false); if (!open) return null; return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()}><div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden p-6">{done ? (<><h3 className="text-lg font-bold text-emerald-700 mb-1">✓ Reminder set</h3><p className="text-xs text-slate-500 mb-4">We'll {channel === "email" ? "email" : "push-notify"} you in {days} days to check in on your finances. (Coming with the backend rollout.)</p><button onClick={() => { setDone(false); onClose(); }} className="w-full py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">Done</button></>) : (<><h3 className="text-lg font-bold text-slate-800 mb-1">⏰ Set a Reminder</h3><p className="text-xs text-slate-500 mb-4">Beginners forget to update their numbers. Let us nudge you.</p><label className="text-xs font-semibold text-slate-600 block mb-1">Remind me in</label><div className="flex gap-2 mb-3">{[7, 14, 30, 90].map(d => <button key={d} onClick={() => setDays(d)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${days === d ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{d} days</button>)}</div><label className="text-xs font-semibold text-slate-600 block mb-1">Via</label><div className="flex gap-2 mb-4">{[["email", "📧 Email"], ["push", "🔔 Push"]].map(([k, l]) => <button key={k} onClick={() => setChannel(k)} className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium ${channel === k ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{l}</button>)}</div><div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-4 text-xs text-amber-900">Backend required — your preference is queued for when the email/push service is live.</div><div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200">Cancel</button><button onClick={() => setDone(true)} className="flex-1 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">Set Reminder</button></div></>)}</div></div>); };
 
 // ============================================================
 // PROFESSION-AWARE CUSTOM CATEGORIES
@@ -529,12 +553,18 @@ Rules:
     }),
   });
   if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Anthropic API ${response.status}: ${errText.slice(0, 200)}`);
+    // Map status codes to friendly messages; never surface raw API response bodies to the user.
+    const msg = response.status === 401 ? "Your API key was rejected. Double-check it at console.anthropic.com."
+      : response.status === 429 ? "Rate limit reached. Wait a moment and try again."
+      : response.status === 400 ? "The request was rejected. Try a shorter or clearer description."
+      : response.status >= 500 ? "Anthropic's service is temporarily unavailable. Try again shortly."
+      : "The request failed. Check your key and connection, then try again.";
+    throw new Error(msg);
   }
-  const data = await response.json();
+  let data;
+  try { data = await response.json(); } catch (e) { throw new Error("Couldn't read the response. Please try again."); }
   const text = data?.content?.[0]?.text;
-  if (!text) throw new Error("Empty response from Claude");
+  if (!text) throw new Error("Empty response from Claude — try again or use a template instead.");
   const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
   let parsed;
   try { parsed = JSON.parse(cleaned); } catch (e) { throw new Error("Claude returned non-JSON. Try a more specific profession description."); }
@@ -569,7 +599,7 @@ function CustomizePanel({ open, onClose, onApply, currentLabel }) {
 
   const applyTemplate = (t) => { onApply(t); onClose(); };
 
-  return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-start justify-center p-4 pt-12 overflow-y-auto" onClick={onClose}>
+  return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-start justify-center p-4 pt-12 overflow-y-auto" onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()}>
     <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden mb-12">
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
@@ -590,13 +620,13 @@ function CustomizePanel({ open, onClose, onApply, currentLabel }) {
               <button key={t.id} onClick={() => setPicked(t)} className={`p-4 rounded-xl border-2 text-left transition-all ${picked?.id === t.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white hover:border-indigo-300"}`}>
                 <div className="flex items-center gap-2 mb-1"><span className="text-xl">{t.emoji}</span><span className="text-sm font-bold text-slate-800">{t.label}</span></div>
                 <p className="text-xs text-slate-500">{t.desc}</p>
-                <p className="text-[10px] text-slate-400 mt-1.5">{t.assets.length} assets · {t.liabilities.length} liabilities · {t.expenses.length} expenses</p>
+                <p className="text-xs text-slate-400 mt-1.5">{t.assets.length} assets · {t.liabilities.length} liabilities · {t.expenses.length} expenses</p>
               </button>
             ))}
           </div>
           {picked && (<div className="bg-slate-50 rounded-xl p-4 mb-4">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preview: {picked.label}</h4>
-            <div className="grid grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
               <div><div className="font-bold text-slate-700 mb-1">Assets</div>{picked.assets.slice(0, 4).map(a => <div key={a.key} className="text-slate-600 truncate">• {a.label}</div>)}{picked.assets.length > 4 && <div className="text-slate-400">+ {picked.assets.length - 4} more</div>}</div>
               <div><div className="font-bold text-slate-700 mb-1">Liabilities</div>{picked.liabilities.slice(0, 4).map(a => <div key={a.key} className="text-slate-600 truncate">• {a.label}</div>)}{picked.liabilities.length > 4 && <div className="text-slate-400">+ {picked.liabilities.length - 4} more</div>}</div>
               <div><div className="font-bold text-slate-700 mb-1">Expenses</div>{picked.expenses.slice(0, 4).map(a => <div key={a.key} className="text-slate-600 truncate">• {a.label}</div>)}{picked.expenses.length > 4 && <div className="text-slate-400">+ {picked.expenses.length - 4} more</div>}</div>
@@ -637,7 +667,7 @@ function CustomizePanel({ open, onClose, onApply, currentLabel }) {
           {generated && (<>
             <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4 mb-4">
               <div className="flex items-center gap-2 mb-2"><span className="text-lg">✨</span><span className="text-sm font-bold text-emerald-900">Generated successfully</span></div>
-              <div className="grid grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                 <div><div className="font-bold text-emerald-800 mb-1">{generated.assets.length} Assets</div>{generated.assets.slice(0, 5).map(a => <div key={a.key} className="text-emerald-700 truncate">• {a.label}</div>)}</div>
                 <div><div className="font-bold text-emerald-800 mb-1">{generated.liabilities.length} Liabilities</div>{generated.liabilities.slice(0, 5).map(a => <div key={a.key} className="text-emerald-700 truncate">• {a.label}</div>)}</div>
                 <div><div className="font-bold text-emerald-800 mb-1">{generated.expenses.length} Expenses</div>{generated.expenses.slice(0, 5).map(a => <div key={a.key} className="text-emerald-700 truncate">• {a.label}</div>)}</div>
@@ -668,16 +698,16 @@ const DoNext = ({ engagement, riskProfile, onNav }) => {
   const tones = { indigo: { bg: "bg-indigo-50", border: "border-indigo-200", dot: "bg-indigo-500", text: "text-indigo-900", btn: "bg-indigo-600 hover:bg-indigo-700" }, amber: { bg: "bg-amber-50", border: "border-amber-200", dot: "bg-amber-500", text: "text-amber-900", btn: "bg-amber-500 hover:bg-amber-600" }, emerald: { bg: "bg-emerald-50", border: "border-emerald-200", dot: "bg-emerald-500", text: "text-emerald-900", btn: "bg-emerald-600 hover:bg-emerald-700" } };
   const t = tones[suggestion.tone];
   return (<div className={`${t.bg} ${t.border} border-2 rounded-2xl p-5 mb-4`}>
-    <div className="flex items-center gap-2 mb-1"><span className={`w-2 h-2 rounded-full ${t.dot}`} /><span className={`text-[10px] font-bold uppercase tracking-widest ${t.text} opacity-70`}>Do This Next</span></div>
+    <div className="flex items-center gap-2 mb-1"><span className={`w-2 h-2 rounded-full ${t.dot}`} /><span className={`text-xs font-bold uppercase tracking-widest ${t.text} opacity-70`}>Do This Next</span></div>
     <div className={`text-xl font-bold ${t.text} mb-1`}>{suggestion.title}</div>
     <div className="text-sm text-slate-600 mb-3">{suggestion.reason}</div>
     <button onClick={() => onNav(suggestion.nav)} className={`px-4 py-2 ${t.btn} text-white text-sm font-semibold rounded-lg`}>Take me there →</button>
   </div>);
 };
-const Btn = ({ children, onClick, v = "primary", className = "" }) => { const s = { primary: "bg-indigo-600 text-white hover:bg-indigo-700", secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200", danger: "bg-red-50 text-red-600 hover:bg-red-100", success: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100", accent: "bg-amber-500 text-white hover:bg-amber-600" }; return <button onClick={onClick} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${s[v]} ${className}`}>{children}</button>; };
+const Btn = ({ children, onClick, v = "primary", className = "", "aria-label": ariaLabel }) => { const s = { primary: "bg-indigo-600 text-white hover:bg-indigo-700", secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200", danger: "bg-red-50 text-red-600 hover:bg-red-100", success: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100", accent: "bg-amber-500 text-white hover:bg-amber-600" }; return <button onClick={onClick} aria-label={ariaLabel} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${s[v]} ${className}`}>{children}</button>; };
 const Bar = ({ value, min, max, good, bad, label, display, info }) => { const pct = Math.min(Math.max((value - min) / (max - min), 0), 1) * 100; const isBad = bad !== undefined && ((good !== undefined && good > bad) ? value <= bad : value >= bad); const isGood = good !== undefined && ((bad !== undefined && good > bad) ? value >= good : value <= good); const c = isBad ? "bg-red-400" : isGood ? "bg-emerald-400" : "bg-amber-400"; return <div className="mb-2.5"><div className="flex justify-between items-center mb-0.5"><span className="text-xs font-medium text-slate-600 flex items-center">{label}{info && <Tip text={info} />}</span><span className="text-xs font-bold text-slate-800">{display}</span></div><div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${c} transition-all duration-700`} style={{ width: `${pct}%` }} /></div></div>; };
 const Ring = ({ score, max, size = 90, color = "indigo" }) => { const pct = Math.min(Math.max(score / max, 0), 1); const r = (size - 10) / 2; const circ = 2 * Math.PI * r; const off = circ * (1 - pct); const p = { green: ["#22c55e", "#15803d"], yellow: ["#eab308", "#a16207"], red: ["#ef4444", "#b91c1c"], indigo: ["#6366f1", "#3730a3"] }; const [st, tx] = p[color] || p.indigo; return <svg width={size} height={size}><circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth="6" /><circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={st} strokeWidth="6" strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ transition: "stroke-dashoffset 0.8s" }} /><text x={size / 2} y={size / 2 - 2} textAnchor="middle" fontSize="17" fontWeight="700" fill={tx}>{score.toFixed(0)}</text><text x={size / 2} y={size / 2 + 11} textAnchor="middle" fontSize="9" fill="#94a3b8">/ {max}</text></svg>; };
-const $ = (n, t = "$") => { if (t === "$") return (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 }); if (t === "%") return n.toFixed(1) + "%"; if (t === "x") return n.toFixed(2) + "x"; return n.toLocaleString(undefined, { maximumFractionDigits: 2 }); };
+const $ = (n, t = "$") => { if (!Number.isFinite(n)) return t === "%" ? "—%" : t === "x" ? "—" : "—"; if (t === "$") return (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 }); if (t === "%") return n.toFixed(1) + "%"; if (t === "x") return n.toFixed(2) + "x"; return n.toLocaleString(undefined, { maximumFractionDigits: 2 }); };
 const Bench = ({ value, avg, label }) => <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><span className={value >= avg ? "text-emerald-600" : "text-amber-600"}>{value >= avg ? "Above" : "Below"} avg</span><span className="text-slate-400">({label}: {typeof avg === "number" && avg < 1 ? avg.toFixed(2) : avg})</span></div>;
 
 // Finding component with expandable details
@@ -925,7 +955,7 @@ function Onboarding({ onComplete, onLegalOpen }) {
             <button key={t.id} onClick={() => setPickedTemplate(t)} className={`p-4 rounded-xl border-2 text-left transition-all ${pickedTemplate?.id === t.id ? "border-indigo-500 bg-indigo-50 shadow-md" : "border-slate-200 bg-white hover:border-indigo-300"}`}>
               <div className="flex items-center gap-2 mb-1"><span className="text-xl">{t.emoji}</span><span className="text-sm font-bold text-slate-800">{t.label}</span></div>
               <p className="text-xs text-slate-500">{t.desc}</p>
-              <p className="text-[10px] text-slate-400 mt-1.5">{t.assets.length + t.liabilities.length + t.expenses.length} custom line items</p>
+              <p className="text-xs text-slate-400 mt-1.5">{t.assets.length + t.liabilities.length + t.expenses.length} custom line items</p>
             </button>
           ))}
         </div>
@@ -1321,7 +1351,7 @@ function PersonalFinance({ jargonFree, riskType, onNav, onEngage, toured, onDism
             </div>
           ))}
         </div>
-        <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-3 gap-3 text-xs">
+        <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
           <div><span className="text-slate-400">Custom Assets:</span> <span className="font-bold text-emerald-700">{$(customA)}</span></div>
           <div><span className="text-slate-400">Custom Liabilities:</span> <span className="font-bold text-red-600">{$(customL)}</span></div>
           <div><span className="text-slate-400">Custom Expenses/mo:</span> <span className="font-bold text-indigo-700">{$(customExp)}</span></div>
@@ -1337,8 +1367,8 @@ function PersonalFinance({ jargonFree, riskType, onNav, onEngage, toured, onDism
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <Card><h3 className="text-sm font-bold text-slate-700 mb-3">{jf ? "Your Money Picture" : "Visual Summary"}</h3>
           <div className="flex justify-around mb-4">
-            <div className="text-center"><div className="text-[10px] font-bold text-slate-400 uppercase mb-2">Safety Net</div><EmergencyBucket months={em} target={6} /></div>
-            <div className="text-center"><div className="text-[10px] font-bold text-slate-400 uppercase mb-2">Assets vs Debts</div><DebtScale assets={totalA} debts={totalL} /></div>
+            <div className="text-center"><div className="text-xs font-bold text-slate-400 uppercase mb-2">Safety Net</div><EmergencyBucket months={em} target={6} /></div>
+            <div className="text-center"><div className="text-xs font-bold text-slate-400 uppercase mb-2">Assets vs Debts</div><DebtScale assets={totalA} debts={totalL} /></div>
           </div>
           <div className="border-t border-slate-100 pt-3 flex items-center gap-3"><Ring score={score} max={100} color={score >= 70 ? "green" : score >= 45 ? "yellow" : "red"} /><div className="flex-1">
             <Bar value={sr} min={0} max={40} good={15} bad={5} label="Savings Rate" display={$(sr, "%")} />
@@ -1353,8 +1383,8 @@ function PersonalFinance({ jargonFree, riskType, onNav, onEngage, toured, onDism
       </div>
       <Card className="mb-4"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><h3 className="text-sm font-bold text-indigo-700">{jf ? "Retirement Crystal Ball" : "Retirement Projector"}</h3>{showRetire && <ConfidenceLabel level="estimate" note="Returns vary year to year. Stock market averages ~7% real return long-term, but any 30-year window can land 4-10%. Treat this as a range, not a target." />}</div><Btn onClick={() => setShowRetire(!showRetire)} v="secondary">{showRetire ? "Hide" : "Show"}</Btn></div>
         {showRetire && <>
-          <div className="grid grid-cols-4 gap-3 mb-3"><F label="Current Balance" value={d.retireCurrent} onChange={u("retireCurrent")} prefix="$" small /><F label="Monthly Contribution" value={d.retireMo} onChange={u("retireMo")} prefix="$" small /><F label="Expected Return" value={d.retireReturn} onChange={u("retireReturn")} suffix="%" small /><F label="Years to Retire" value={d.retireYrs} onChange={u("retireYrs")} small /></div>
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3"><F label="Current Balance" value={d.retireCurrent} onChange={u("retireCurrent")} prefix="$" small /><F label="Monthly Contribution" value={d.retireMo} onChange={u("retireMo")} prefix="$" small /><F label="Expected Return" value={d.retireReturn} onChange={u("retireReturn")} suffix="%" small /><F label="Years to Retire" value={d.retireYrs} onChange={u("retireYrs")} small /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-3">
             <div className="p-3 bg-indigo-50 rounded-lg text-center"><div className="text-xs text-indigo-500 font-semibold">{jf ? "You'll Have" : "Projected Balance"}</div><div className="text-xl font-bold text-indigo-700">{$(retireData.final)}</div></div>
             <div className="p-3 bg-slate-50 rounded-lg text-center"><div className="text-xs text-slate-400">You Put In</div><div className="text-lg font-bold text-slate-700">{$(retireData.contributed)}</div></div>
             <div className="p-3 bg-emerald-50 rounded-lg text-center"><div className="text-xs text-emerald-500">{jf ? "Free Money (Interest)" : "Compound Growth"}</div><div className="text-lg font-bold text-emerald-700">{$(retireData.growth)}</div></div>
@@ -1418,10 +1448,12 @@ function Investments({ jargonFree: jf, riskType }) {
   const mc = stock.price * stock.shares;
   const nm = stock.revenue > 0 ? (stock.netIncome / stock.revenue) * 100 : 0;
   const ytm = useMemo(() => {
+    if (!(bond.price > 0) || !(bond.freq > 0) || !(bond.yrs > 0)) return NaN;
     const C = (bond.face * bond.coupon / 100) / bond.freq; const n = bond.yrs * bond.freq;
-    let r = C / bond.price;
-    for (let i = 0; i < 100; i++) { const pv = C * (1 - Math.pow(1 + r, -n)) / r + bond.face * Math.pow(1 + r, -n); const dp = -C * (-n * Math.pow(1 + r, -n - 1) * r - (1 - Math.pow(1 + r, -n))) / (r * r) + bond.face * (-n) * Math.pow(1 + r, -n - 1); if (Math.abs(pv - bond.price) < 0.001) break; r -= (pv - bond.price) / dp; if (r <= 0) r = 0.001; }
-    return r * bond.freq * 100;
+    let r = Math.max(0.0001, C / bond.price);
+    for (let i = 0; i < 100; i++) { const pv = C * (1 - Math.pow(1 + r, -n)) / r + bond.face * Math.pow(1 + r, -n); const dp = -C * (-n * Math.pow(1 + r, -n - 1) * r - (1 - Math.pow(1 + r, -n))) / (r * r) + bond.face * (-n) * Math.pow(1 + r, -n - 1); if (!Number.isFinite(dp) || dp === 0) break; if (Math.abs(pv - bond.price) < 0.001) break; r -= (pv - bond.price) / dp; if (r <= 0) r = 0.001; }
+    const out = r * bond.freq * 100;
+    return Number.isFinite(out) ? out : NaN;
   }, [bond]);
   const spread = ytm - bond.treasury;
   const supPct = crypto.maxSupply > 0 ? (crypto.circSupply / crypto.maxSupply) * 100 : 100;
@@ -1452,7 +1484,7 @@ function Investments({ jargonFree: jf, riskType }) {
           <div><F label="Revenue" value={stock.revenue} onChange={us("revenue")} prefix="$" small /><F label="Net Income" value={stock.netIncome} onChange={us("netIncome")} prefix="$" small /><F label="Total Assets" value={stock.totalAssets} onChange={us("totalAssets")} prefix="$" small /><F label="Total Equity" value={stock.totalEquity} onChange={us("totalEquity")} prefix="$" small /></div>
           <div><F label="Total Debt" value={stock.totalDebt} onChange={us("totalDebt")} prefix="$" small /><F label="Shares Outstanding" value={stock.shares} onChange={us("shares")} small /><F label="Revenue Growth" value={stock.growth} onChange={us("growth")} suffix="%" small /></div>
         </div>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4">
           <Card><div className="text-xs text-slate-400">Market Cap</div><div className="text-lg font-bold text-slate-800 mt-1">{mc >= 1e9 ? "$" + (mc / 1e9).toFixed(1) + "B" : "$" + (mc / 1e6).toFixed(0) + "M"}</div></Card>
           <Card><div className="text-xs text-slate-400">{jf ? "Cash Yield" : "Div Yield"}</div><div className="text-lg font-bold text-indigo-600 mt-1">{dy.toFixed(2)}%</div><Bench value={dy} avg={1.3} label="S&P 500 avg" /></Card>
           <Card><div className="text-xs text-slate-400">Growth</div><div className={`text-lg font-bold mt-1 ${stock.growth >= 10 ? "text-emerald-600" : "text-amber-500"}`}>{stock.growth}%</div></Card>
@@ -1489,7 +1521,7 @@ function Investments({ jargonFree: jf, riskType }) {
           <div><F label="Years to Maturity" value={bond.yrs} onChange={ub("yrs")} /><F label="Current Price" value={bond.price} onChange={ub("price")} prefix="$" /></div>
           <div><F label="Payments/Year" value={bond.freq} onChange={ub("freq")} /><F label="10-Yr Treasury" value={bond.treasury} onChange={ub("treasury")} suffix="%" /></div>
         </div>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4">
           <Card><div className="text-xs text-slate-400">{jf ? "Total Return If You Hold" : "YTM"}<Tip text={jf ? "Your total yearly return if you hold until maturity." : "Yield to Maturity."} /></div><div className="text-xl font-bold text-indigo-600 mt-1">{ytm.toFixed(2)}%</div></Card>
           <Card><div className="text-xs text-slate-400">{jf ? "Extra vs Safe Rate" : "Spread vs Treasury"}</div><div className={`text-xl font-bold mt-1 ${spread > 2 ? "text-amber-500" : "text-emerald-600"}`}>+{spread.toFixed(2)}%</div></Card>
           <Card><div className="text-xs text-slate-400">Status</div><div className={`text-xl font-bold mt-1 ${bond.price < bond.face ? "text-emerald-600" : "text-amber-500"}`}>{bond.price < bond.face ? "Discount" : "Premium"}</div></Card>
@@ -1661,20 +1693,22 @@ function Portfolio({ jargonFree: jf, riskType, onNav, onEngage, toured, onDismis
             <Btn onClick={addH} v="success">+ Add</Btn>
           </div>
         </div>
+        <div className="overflow-x-auto -mx-1 px-1">
         {sorted.map((h, si) => {
           const oi = holdings.findIndex(oh => oh.name === h.name && oh.type === h.type);
           return (
-            <div key={si} className="flex gap-2 mb-2 items-end">
+            <div key={si} className="flex gap-2 mb-2 items-end min-w-max">
               <div className="w-28"><label className="block text-xs text-slate-400 mb-0.5">Name</label><input type="text" value={h.name} onChange={e => updateH(oi, "name", e.target.value)} className="w-full px-2 py-1 text-sm border border-slate-200 rounded-lg outline-none" /></div>
               <div className="w-24"><F label="Type" value={h.type} onChange={v => updateH(oi, "type", v)} type="text" options={TYPES.map(t => ({ value: t, label: t }))} small /></div>
               <div className="w-20"><F label="Qty" value={h.qty} onChange={v => updateH(oi, "qty", v)} small /></div>
               <div className="w-24"><F label={jf ? "Bought At" : "Cost/Unit"} value={h.costBasis} onChange={v => updateH(oi, "costBasis", v)} prefix="$" small /></div>
               <div className="w-24"><F label={jf ? "Price Now" : "Current"} value={h.current} onChange={v => updateH(oi, "current", v)} prefix="$" small /></div>
               <div className="pb-1 w-20 text-right"><div className="text-xs text-slate-400">{$(h.currentTotal)}</div><div className={`text-xs font-bold ${h.gain >= 0 ? "text-emerald-600" : "text-red-500"}`}>{h.gain >= 0 ? "+" : ""}{$(h.gainPct, "%")}</div></div>
-              <button onClick={() => removeH(oi)} className="text-red-400 text-xs pb-1 hover:text-red-600">x</button>
+              <button onClick={() => removeH(oi)} aria-label="Remove holding" className="text-red-500 text-xs pb-1 hover:text-red-600">✕</button>
             </div>
           );
         })}
+        </div>
       </Card>
 
       <RunAnalysisBtn onClick={() => { setShowAnalysis(!showAnalysis); if (onEngage) onEngage({ hhi: Math.round(hhi * 10000) }); }} />
@@ -1896,6 +1930,7 @@ function MarketLab({ jargonFree: jf }) {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <Title tier="Investing" sub={jf ? "Charts, signals, and sentiment — see what the market is telling you" : "Technical analysis with price charts, indicators, buy/sell signals, and news sentiment"}>Market Lab</Title>
+      <AdviceNote kind="trading" />
 
       {/* Asset Input */}
       <Card className="mb-4">
@@ -2167,10 +2202,10 @@ function StressTest({ jargonFree: jf, riskType, onNav }) {
   const overallScore = Math.round(scenarios.reduce((s, sc) => s + sc.survival, 0) / scenarios.length);
 
   const actions = [];
-  if (d.emergencyFund < d.monthlyExpenses * 6) actions.push({ title: jf ? "Build a bigger safety net" : "Increase emergency fund", detail: `You have ${(d.emergencyFund / d.monthlyExpenses).toFixed(1)} months of expenses saved. Aim for 6 months (${$(d.monthlyExpenses * 6)}).` });
+  if (d.emergencyFund < d.monthlyExpenses * 6) actions.push({ title: jf ? "Build a bigger safety net" : "Increase emergency fund", detail: `You have ${d.monthlyExpenses > 0 ? (d.emergencyFund / d.monthlyExpenses).toFixed(1) : "—"} months of expenses saved. Aim for 6 months (${$(d.monthlyExpenses * 6)}).` });
   if (d.stockPct > 70) actions.push({ title: jf ? "Too much in stocks" : "Reduce equity concentration", detail: `${d.stockPct}% in stocks means big swings in a crash. Consider moving 10-20% to bonds or cash.` });
   if (scenarios[3].emergencyRunway < 6) actions.push({ title: jf ? "You wouldn't survive the worst case for 6 months" : "Build recession resilience", detail: "In the worst scenario, your emergency fund runs out in " + (scenarios[3].emergencyRunway === Infinity ? "never" : scenarios[3].emergencyRunway.toFixed(1) + " months") + "." });
-  if (d.debtPayment > d.monthlyIncome * 0.3) actions.push({ title: jf ? "Debt payments are too high" : "Reduce debt burden", detail: `${((d.debtPayment / d.monthlyIncome) * 100).toFixed(0)}% of income goes to debt. This leaves you vulnerable.` });
+  if (d.monthlyIncome > 0 && d.debtPayment > d.monthlyIncome * 0.3) actions.push({ title: jf ? "Debt payments are too high" : "Reduce debt burden", detail: `${((d.debtPayment / d.monthlyIncome) * 100).toFixed(0)}% of income goes to debt. This leaves you vulnerable.` });
   if (actions.length === 0) actions.push({ title: jf ? "You're well-prepared" : "Strong financial resilience", detail: "Your finances can handle major shocks. Keep maintaining your emergency fund and diversification." });
 
   return (
@@ -2313,6 +2348,7 @@ function TaxEstimator({ jargonFree: jf }) {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <Title tier="Investing" sub={jf ? "See exactly what you'll owe before you sell anything" : "Estimate capital gains taxes, find harvesting opportunities, and plan sales"}>Tax Impact Estimator</Title>
+      <AdviceNote kind="tax" />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <F label={jf ? "Your Tax Bracket" : "Federal Tax Bracket"} value={taxBracket} onChange={setTaxBracket} suffix="%" info={jf ? "Your ordinary income tax rate. This determines short-term capital gains tax." : "Marginal ordinary income tax rate."} />
@@ -2332,7 +2368,7 @@ function TaxEstimator({ jargonFree: jf }) {
           <h3 className="text-sm font-bold text-slate-800">Holdings</h3>
           <Btn onClick={addH} v="success">+ Add</Btn>
         </div>
-        <table className="w-full text-xs">
+        <div className="overflow-x-auto"><table className="w-full text-xs">
           <thead><tr className="bg-slate-50">
             <th className="text-left py-1.5 px-2 text-slate-500">Asset</th>
             <th className="text-right py-1.5 px-2 text-slate-500">{jf ? "Paid" : "Cost"}</th>
@@ -2355,7 +2391,7 @@ function TaxEstimator({ jargonFree: jf }) {
               <td className="py-1 px-1"><button onClick={() => removeH(i)} className="text-red-400 hover:text-red-600">x</button></td>
             </tr>
           ))}</tbody>
-        </table>
+        </table></div>
       </Card>
 
       {/* Summary */}
@@ -2433,7 +2469,7 @@ function DecisionJournal({ jargonFree: jf, onNav, onDecisionLogged }) {
       <Title tier="Protection" sub={jf ? "Track every financial decision you make and learn from the results" : "Log decisions, track outcomes, and discover patterns in your financial behavior"}>Decision Journal</Title>
 
       {/* Stats */}
-      <div className="grid grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-4">
         <Card><div className="text-xs text-slate-400">Decisions</div><div className="text-lg font-bold text-slate-800 mt-1">{totalDecisions}</div><div className="text-xs text-slate-400">{pending} pending</div></Card>
         <Card><div className="text-xs text-slate-400">{jf ? "Win Rate" : "Success Rate"}</div><div className={`text-lg font-bold mt-1 ${winRate >= 50 ? "text-emerald-600" : "text-red-500"}`}>{winRate.toFixed(0)}%</div></Card>
         <Card><div className="text-xs text-slate-400">{jf ? "Avg Win" : "Avg Gain"}</div><div className="text-lg font-bold text-emerald-600 mt-1">+{avgWin.toFixed(1)}%</div></Card>
@@ -2448,7 +2484,7 @@ function DecisionJournal({ jargonFree: jf, onNav, onDecisionLogged }) {
           <Btn onClick={() => setShowAdd(!showAdd)} v={showAdd ? "danger" : "primary"}>{showAdd ? "Cancel" : "+ New Decision"}</Btn>
         </div>
         {showAdd && <>
-          <div className="grid grid-cols-4 gap-3 mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
             <F label="Date" value={newEntry.date} onChange={v => setNewEntry(p => ({ ...p, date: v }))} type="text" small />
             <F label="Asset / Topic" value={newEntry.asset} onChange={v => setNewEntry(p => ({ ...p, asset: v }))} type="text" small />
             <F label="Action" value={newEntry.action} onChange={v => setNewEntry(p => ({ ...p, action: v }))} type="text" options={["Buy", "Sell", "Hold", "Save", "Rebalance", "Pay Debt", "Other"].map(a => ({ value: a, label: a }))} small />
@@ -2536,7 +2572,7 @@ function Loans({ jargonFree: jf }) {
         </div>
       </div>
       {l.extra > 0 && <Card className="mb-4 bg-emerald-50 border-emerald-200"><p className="text-sm text-emerald-700">Extra {$(l.extra)}/mo saves <strong>{$(saved)}</strong> in interest and pays off <strong>{(l.term - moE / 12).toFixed(1)} years early</strong>.</p></Card>}
-      <Card><h3 className="text-sm font-bold text-slate-800 mb-2">{jf ? "Payment Schedule" : "Amortization"}</h3><table className="w-full text-xs"><thead><tr className="bg-slate-50"><th className="text-left py-1 px-2 text-slate-500">Month</th><th className="text-right py-1 px-2 text-slate-500">Payment</th><th className="text-right py-1 px-2 text-slate-500">Principal</th><th className="text-right py-1 px-2 text-slate-500">Interest</th><th className="text-right py-1 px-2 text-slate-500">Balance</th></tr></thead><tbody>{sched.map((r, i) => <tr key={i} className="border-t border-slate-100"><td className="py-1 px-2">{r.m}</td><td className="py-1 px-2 text-right">{$(r.pay)}</td><td className="py-1 px-2 text-right text-emerald-600">{$(r.p)}</td><td className="py-1 px-2 text-right text-red-500">{$(r.i)}</td><td className="py-1 px-2 text-right font-medium">{$(r.bal)}</td></tr>)}</tbody></table></Card>
+      <Card><h3 className="text-sm font-bold text-slate-800 mb-2">{jf ? "Payment Schedule" : "Amortization"}</h3><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50"><th className="text-left py-1 px-2 text-slate-500">Month</th><th className="text-right py-1 px-2 text-slate-500">Payment</th><th className="text-right py-1 px-2 text-slate-500">Principal</th><th className="text-right py-1 px-2 text-slate-500">Interest</th><th className="text-right py-1 px-2 text-slate-500">Balance</th></tr></thead><tbody>{sched.map((r, i) => <tr key={i} className="border-t border-slate-100"><td className="py-1 px-2">{r.m}</td><td className="py-1 px-2 text-right">{$(r.pay)}</td><td className="py-1 px-2 text-right text-emerald-600">{$(r.p)}</td><td className="py-1 px-2 text-right text-red-500">{$(r.i)}</td><td className="py-1 px-2 text-right font-medium">{$(r.bal)}</td></tr>)}</tbody></table></div></Card>
     </div>
   );
 }
@@ -2588,7 +2624,7 @@ function BreakEven({ jargonFree: jf }) {
           <Card><div className="text-xs text-slate-400">{jf ? "Monthly Profit" : "Current P&L"}</div><div className={`text-xl font-bold mt-1 ${profit >= 0 ? "text-emerald-600" : "text-red-500"}`}>{$(profit)}</div></Card>
         </div>
       </div>
-      <Card className="mb-4"><h3 className="text-sm font-bold text-indigo-700 mb-2">{jf ? "What If Scenarios" : "Sensitivity"}</h3><table className="w-full text-sm"><thead><tr className="bg-slate-50"><th className="text-left py-1.5 px-3 text-xs text-slate-500">Scenario</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">Price</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">Cost</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">Fixed</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">Break-Even</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">vs Current</th></tr></thead><tbody>{scenarios.map((s, i) => <tr key={i} className={`border-t border-slate-100 ${i === 0 ? "bg-indigo-50" : ""}`}><td className="py-1 px-3 font-medium">{s.l}</td><td className="py-1 px-3 text-right">{$(s.p)}</td><td className="py-1 px-3 text-right">{$(s.v)}</td><td className="py-1 px-3 text-right">{$(s.f)}</td><td className="py-1 px-3 text-right font-bold">{s.be === Infinity ? "N/A" : s.be.toLocaleString()}</td><td className={`py-1 px-3 text-right ${i === 0 ? "" : s.be < be ? "text-emerald-600" : "text-red-500"}`}>{i === 0 ? "—" : (s.be - be > 0 ? "+" : "") + (s.be - be)}</td></tr>)}</tbody></table></Card>
+      <Card className="mb-4"><h3 className="text-sm font-bold text-indigo-700 mb-2">{jf ? "What If Scenarios" : "Sensitivity"}</h3><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-50"><th className="text-left py-1.5 px-3 text-xs text-slate-500">Scenario</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">Price</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">Cost</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">Fixed</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">Break-Even</th><th className="text-right py-1.5 px-3 text-xs text-slate-500">vs Current</th></tr></thead><tbody>{scenarios.map((s, i) => <tr key={i} className={`border-t border-slate-100 ${i === 0 ? "bg-indigo-50" : ""}`}><td className="py-1 px-3 font-medium">{s.l}</td><td className="py-1 px-3 text-right">{$(s.p)}</td><td className="py-1 px-3 text-right">{$(s.v)}</td><td className="py-1 px-3 text-right">{$(s.f)}</td><td className="py-1 px-3 text-right font-bold">{s.be === Infinity ? "N/A" : s.be.toLocaleString()}</td><td className={`py-1 px-3 text-right ${i === 0 ? "" : s.be < be ? "text-emerald-600" : "text-red-500"}`}>{i === 0 ? "—" : (s.be - be > 0 ? "+" : "") + (s.be - be)}</td></tr>)}</tbody></table></div></Card>
       <Card className="bg-slate-50"><p className="text-sm text-slate-700">{profit >= 0 ? `You're ${margin.toFixed(0)}% above break-even. Each additional unit adds ${$(cm)} to profit.` : `You need ${(be - d.units).toLocaleString()} more units to break even.`}</p></Card>
     </div>
   );
@@ -2623,7 +2659,7 @@ function WhatIf({ jargonFree: jf }) {
       <Title tier="My Business" sub={jf ? "Pick a scenario or build your own — see the impact instantly" : "Pre-built scenarios and custom adjustments with before/after comparison"}>What-If Scenario Engine</Title>
 
       {/* Scenario Templates */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4">
         {SCENARIOS.map((s, i) => (
           <button key={i} onClick={() => applyScenario(s)} className={`p-3 rounded-xl border text-left transition-all ${activeScenario === s.name ? "border-indigo-400 bg-indigo-50 shadow-md" : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"}`}>
             <div className="flex items-center gap-2 mb-1"><span className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">{s.icon}</span><span className="text-sm font-bold text-slate-800">{s.name}</span></div>
@@ -2649,7 +2685,7 @@ function WhatIf({ jargonFree: jf }) {
       {/* Impact Breakdown */}
       <Card className="mb-4">
         <h3 className="text-sm font-bold text-slate-800 mb-3">{jf ? "How Each Number Changes" : "Impact Breakdown"}</h3>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[{ l: "Revenue", b: cur.rev, s: scen.rev, d: diff.rev }, { l: jf ? "Profit" : "Net Profit", b: cur.net, s: scen.net, d: diff.net }, { l: "Margin", b: cur.margin, s: scen.margin, d: diff.margin, p: true }, { l: jf ? "Rev/Person" : "Rev/Employee", b: cur.rpe, s: scen.rpe, d: diff.rpe }].map((m, i) => (
             <div key={i} className="p-3 bg-slate-50 rounded-lg">
               <div className="text-xs text-slate-400 mb-1">{m.l}</div>
@@ -2671,7 +2707,7 @@ function WhatIf({ jargonFree: jf }) {
             <Btn onClick={() => setEditing(!editing)} v="secondary">{editing ? "Hide Baseline" : "Edit Baseline"}</Btn>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <F label={jf ? "Raise/Lower Price" : "Price Change"} value={adj.price} onChange={uA("price")} suffix="%" small />
           <F label={jf ? "Sell More/Less" : "Volume Change"} value={adj.units} onChange={uA("units")} suffix="%" small />
           <F label={jf ? "Material Cost Change" : "COGS Change"} value={adj.cogs} onChange={uA("cogs")} suffix="%" small />
@@ -2685,7 +2721,7 @@ function WhatIf({ jargonFree: jf }) {
       {/* Baseline Editor */}
       {editing && <Card className="mb-4">
         <h3 className="text-sm font-bold text-slate-700 mb-2">{jf ? "Your Current Numbers" : "Baseline"}</h3>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <F label="Revenue" value={base.rev} onChange={uB("rev")} prefix="$" small />
           <F label="COGS" value={base.cogs} onChange={uB("cogs")} prefix="$" small />
           <F label={jf ? "Overhead" : "OpEx"} value={base.opex} onChange={uB("opex")} prefix="$" small />
@@ -2721,14 +2757,14 @@ function Valuation({ jargonFree: jf }) {
       </div>
       <Card className="mb-4"><div className="flex items-center justify-between mb-2"><h3 className="text-sm font-bold text-violet-700">{jf ? "Future Cash Flows" : "DCF"}</h3><div className="flex gap-2"><Btn onClick={() => setFcfs([...fcfs, fcfs[fcfs.length - 1] * 1.1])} v="secondary">+ Year</Btn><Btn onClick={() => fcfs.length > 1 && setFcfs(fcfs.slice(0, -1))} v="danger">- Year</Btn></div></div>
         <div className="flex gap-2 overflow-x-auto mb-3">{fcfs.map((f, i) => <div key={i} className="shrink-0 w-24"><F label={`Yr ${i + 1}`} value={f} onChange={v => { const a = [...fcfs]; a[i] = v; setFcfs(a); }} prefix="$" small /><div className="text-xs text-center text-slate-400">PV: {$(pvs[i])}</div></div>)}</div>
-        <div className="grid grid-cols-3 gap-3"><F label={jf ? "Long-term Growth" : "Terminal Growth"} value={d.tg} onChange={u("tg")} suffix="%" small /><F label="Debt" value={d.debt} onChange={u("debt")} prefix="$" small /><F label="Cash" value={d.cash} onChange={u("cash")} prefix="$" small /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"><F label={jf ? "Long-term Growth" : "Terminal Growth"} value={d.tg} onChange={u("tg")} suffix="%" small /><F label="Debt" value={d.debt} onChange={u("debt")} prefix="$" small /><F label="Cash" value={d.cash} onChange={u("cash")} prefix="$" small /></div>
         <F label="Shares" value={d.shares} onChange={u("shares")} small /></Card>
       <div className="mb-2"><ConfidenceLabel level="valuation" note="DCF outputs depend on growth-rate, WACC, and terminal-value guesses. Equity analysts target ±20-30% on stable companies; high-growth or volatile names can swing ±50%. Don't trade on this as if it were a price target — use it as a sanity check against market price." /></div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><div className="text-xs text-slate-400">{jf ? "Cash Flow Value" : "PV of FCFs"}</div><div className="text-lg font-bold text-slate-800 mt-1">{$(tPv)}</div></Card>
         <Card><div className="text-xs text-slate-400">{jf ? "Future Value" : "PV Terminal"}</div><div className="text-lg font-bold text-slate-800 mt-1">{$(pvTv)}</div></Card>
-        <Card accent="neutral"><div className="text-xs text-slate-400">{jf ? "Total Business Value" : "Enterprise Value"}</div><div className="text-2xl font-bold text-indigo-600 mt-1">{$(ev)}</div><div className="text-[10px] text-slate-400 mt-1">Fair range: {$(ev * 0.7)} – {$(ev * 1.3)}</div></Card>
-        <Card accent="good"><div className="text-xs text-slate-400">{jf ? "What Each Share Is Worth" : "Price/Share"}</div><div className="text-3xl font-bold text-emerald-600 mt-1">{$(pps)}</div><div className="text-[10px] text-slate-400 mt-1">Fair range: {$(pps * 0.7)} – {$(pps * 1.3)}</div></Card>
+        <Card accent="neutral"><div className="text-xs text-slate-400">{jf ? "Total Business Value" : "Enterprise Value"}</div><div className="text-2xl font-bold text-indigo-600 mt-1">{$(ev)}</div><div className="text-xs text-slate-400 mt-1">Fair range: {$(ev * 0.7)} – {$(ev * 1.3)}</div></Card>
+        <Card accent="good"><div className="text-xs text-slate-400">{jf ? "What Each Share Is Worth" : "Price/Share"}</div><div className="text-3xl font-bold text-emerald-600 mt-1">{$(pps)}</div><div className="text-xs text-slate-400 mt-1">Fair range: {$(pps * 0.7)} – {$(pps * 1.3)}</div></Card>
       </div>
       <Assumptions items={[
         { formula: "Cost of Equity (CAPM): rE = Rf + β × (Rm - Rf)", what: "Risk-free rate plus beta times the equity risk premium. Standard CAPM.", assumptions: ["Risk-free rate = 10-year Treasury yield (you set it manually; currently a hardcoded default)", "Beta is a noisy single number — real betas vary by estimation window and shift over time", "Equity risk premium of 5-7% historically; could be lower going forward as some research suggests"], source: "Sharpe (1964), Lintner (1965); see Damodaran's annual ERP updates for current figures." },
@@ -2758,11 +2794,11 @@ function CapBudget({ jargonFree: jf }) {
       <F label={jf ? "Minimum Return You Need" : "Discount Rate"} value={dr} onChange={setDr} suffix="%" />
       {projects.map((p, pi) => <Card key={pi} className="mb-4 mt-3"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><input type="text" value={p.name} onChange={e => { const u = [...projects]; u[pi].name = e.target.value; setProjects(u); }} className="text-sm font-bold text-slate-800 bg-transparent border-b border-slate-200 outline-none" />{results[pi].npv >= 0 ? <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">{jf ? "GOOD DEAL" : "ACCEPT"}</span> : <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded">{jf ? "BAD DEAL" : "REJECT"}</span>}</div><div className="flex gap-2"><Btn onClick={() => { const u = [...projects]; u[pi].cfs.push(u[pi].cfs[u[pi].cfs.length - 1] || 25000); setProjects(u); }} v="secondary">+ Year</Btn><Btn onClick={() => { const u = [...projects]; if (u[pi].cfs.length > 1) u[pi].cfs.pop(); setProjects(u); }} v="secondary">- Year</Btn>{projects.length > 1 && <Btn onClick={() => setProjects(projects.filter((_, i) => i !== pi))} v="danger">Remove</Btn>}</div></div>
         <div className="flex gap-2 overflow-x-auto mb-2"><div className="shrink-0 w-28"><F label={jf ? "Upfront Cost" : "Investment"} value={p.inv} onChange={v => { const u = [...projects]; u[pi].inv = v; setProjects(u); }} prefix="$" small /></div>{p.cfs.map((c, ci) => <div key={ci} className="shrink-0 w-24"><F label={`Yr ${ci + 1}`} value={c} onChange={v => { const u = [...projects]; u[pi].cfs[ci] = v; setProjects(u); }} prefix="$" small /></div>)}</div>
-        <div className="grid grid-cols-5 gap-2">{[{ l: jf ? "Value Created" : "NPV", v: $(results[pi].npv), g: results[pi].npv >= 0 }, { l: jf ? "Actual Return" : "IRR", v: results[pi].irr.toFixed(1) + "%", g: results[pi].irr > dr }, { l: jf ? "Get Money Back In" : "Payback", v: results[pi].pb === Infinity ? "Never" : results[pi].pb.toFixed(1) + " yrs" }, { l: jf ? "Bang for Buck" : "PI", v: results[pi].pi.toFixed(2) + "x", g: results[pi].pi >= 1 }, { l: jf ? "Annual Value" : "EAA", v: $(results[pi].eaa), g: results[pi].eaa > 0, info: true }].map((m, i) => <div key={i} className="p-2 bg-slate-50 rounded-lg"><div className="text-xs text-slate-400">{m.l}{m.info && <Tip text={jf ? "Equivalent Annual Annuity — spreads the value evenly across each year. Use this to compare projects with different lifespans." : "EAA normalizes NPV over project life. Compare projects with different durations."} />}</div><div className={`text-base font-bold ${m.g === true ? "text-emerald-600" : m.g === false ? "text-red-500" : "text-slate-800"}`}>{m.v}</div></div>)}</div></Card>)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">{[{ l: jf ? "Value Created" : "NPV", v: $(results[pi].npv), g: results[pi].npv >= 0 }, { l: jf ? "Actual Return" : "IRR", v: results[pi].irr.toFixed(1) + "%", g: results[pi].irr > dr }, { l: jf ? "Get Money Back In" : "Payback", v: results[pi].pb === Infinity ? "Never" : results[pi].pb.toFixed(1) + " yrs" }, { l: jf ? "Bang for Buck" : "PI", v: results[pi].pi.toFixed(2) + "x", g: results[pi].pi >= 1 }, { l: jf ? "Annual Value" : "EAA", v: $(results[pi].eaa), g: results[pi].eaa > 0, info: true }].map((m, i) => <div key={i} className="p-2 bg-slate-50 rounded-lg"><div className="text-xs text-slate-400">{m.l}{m.info && <Tip text={jf ? "Equivalent Annual Annuity — spreads the value evenly across each year. Use this to compare projects with different lifespans." : "EAA normalizes NPV over project life. Compare projects with different durations."} />}</div><div className={`text-base font-bold ${m.g === true ? "text-emerald-600" : m.g === false ? "text-red-500" : "text-slate-800"}`}>{m.v}</div></div>)}</div></Card>)}
       {/* Project Ranking Table */}
       {ranked.length > 1 && <Card className="mb-4 mt-4">
         <h3 className="text-sm font-bold text-indigo-700 mb-2">{jf ? "Which Project Wins?" : "Project Ranking"}<Tip text={jf ? "Ranked by EAA (annual value) so you can fairly compare projects with different lifespans." : "Ranked by Equivalent Annual Annuity for fair comparison across different project durations."} /></h3>
-        <table className="w-full text-xs"><thead><tr className="bg-slate-50">
+        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50">
           <th className="text-left py-1.5 px-2 text-slate-500">Rank</th>
           <th className="text-left py-1.5 px-2 text-slate-500">Project</th>
           <th className="text-right py-1.5 px-2 text-slate-500">NPV</th>
@@ -2780,7 +2816,7 @@ function CapBudget({ jargonFree: jf }) {
             <td className="py-1.5 px-2 text-right">{r.years}</td>
             <td className="py-1.5 px-2 text-right font-bold text-indigo-600">{$(r.eaa)}</td>
           </tr>
-        ))}</tbody></table>
+        ))}</tbody></table></div>
         {ranked.length > 0 && <div className="mt-2 p-2 bg-indigo-50 rounded-lg text-xs text-indigo-700">{jf ? `Best choice: ${ranked[0].name} — creates ${$(ranked[0].eaa)} in value per year` : `Recommended: ${ranked[0].name} — highest EAA at ${$(ranked[0].eaa)}/yr`}</div>}
       </Card>}
       <Btn onClick={() => setProjects([...projects, { name: `Project ${String.fromCharCode(65 + projects.length)}`, inv: 100000, cfs: [25000, 25000, 25000, 25000, 25000] }])} v="secondary" className="w-full">+ Add Project</Btn>
@@ -2811,6 +2847,7 @@ function Options({ jargonFree: jf }) {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <Title tier="Investing" sub={jf ? "Understand your options position in plain English" : "Black-Scholes pricing and Greeks"}>Options & Greeks</Title>
+      <AdviceNote kind="trading" />
       <div className="flex gap-2 mb-4"><Btn onClick={() => u("type")("call")} v={d.type==="call"?"primary":"secondary"}>{jf ? "Right to Buy (Call)" : "Call"}</Btn><Btn onClick={() => u("type")("put")} v={d.type==="put"?"primary":"secondary"}>{jf ? "Right to Sell (Put)" : "Put"}</Btn></div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div><F label={jf ? "Stock Price Now" : "Stock Price"} value={d.S} onChange={u("S")} prefix="$" /><F label={jf ? "Your Target Price" : "Strike Price"} value={d.K} onChange={u("K")} prefix="$" /></div>
@@ -2824,7 +2861,7 @@ function Options({ jargonFree: jf }) {
         <Card><div className="text-xs text-slate-400">{jf ? "Need Stock At" : "Break-Even"}</div><div className="text-lg font-bold text-slate-800 mt-1">{$(d.type==="call"?d.K+price:d.K-price)}</div></Card>
       </div>
       <Card><h3 className="text-sm font-bold text-indigo-700 mb-3">{jf ? "How This Option Behaves" : "The Greeks"}</h3>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {[{ n: jf ? "Price Sensitivity" : "Delta", v: delta.toFixed(3), s: `${(Math.abs(delta)*100).toFixed(0)}% ${jf ? "chance of profit" : "prob ITM"}`, info: jf ? "How much the option moves when the stock moves $1." : "Price change per $1 stock move." },
             { n: jf ? "Acceleration" : "Gamma", v: gamma.toFixed(4), s: jf ? "How fast delta changes" : "Rate of delta change" },
             { n: jf ? "Daily Cost" : "Theta", v: theta.toFixed(4), s: `${$(theta*100)}/day`, info: jf ? "How much value you lose every day." : "Daily time decay." },
@@ -3048,7 +3085,7 @@ function GoalTracker({ jargonFree: jf, onGoalAdded, onGoalReached }) {
               <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden mb-2">
                 <div className={`h-full rounded-full transition-all ${g.onTrack ? "bg-emerald-500" : "bg-red-400"}`} style={{ width: `${g.pct}%` }} />
               </div>
-              <div className="grid grid-cols-4 gap-2 text-xs">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                 <div><span className="text-slate-400">{jf ? "Goal" : "Target"}</span><div className="font-bold">{$(g.target)}</div></div>
                 <div><span className="text-slate-400">Saved</span><div className="font-bold text-emerald-600">{$(g.saved)}</div></div>
                 <div><span className="text-slate-400">{jf ? "Left" : "Remaining"}</span><div className="font-bold">{$(g.remaining)}</div></div>
@@ -3302,7 +3339,7 @@ function MarketDashboard({ jargonFree: jf }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <Card>
           <h3 className="text-sm font-bold text-indigo-700 mb-2">{jf ? "Major Indexes" : "Market Indexes"}</h3>
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-3">
             {[["S&P 500", "sp500", "sp500Change"], ["Nasdaq", "nasdaq", "nasdaqChange"], ["Dow Jones", "dow", "dowChange"]].map(([l, k, ck]) => (
               <div key={k} className="p-2 bg-slate-50 rounded-lg text-center">
                 <div className="text-xs text-slate-400">{l}</div>
@@ -3550,7 +3587,7 @@ function MarketWatch({ jargonFree: jf, onNav }) {
           <h3 className="text-sm font-bold text-slate-800">{view === "all" ? "All Assets" : view.charAt(0).toUpperCase() + view.slice(1)}</h3>
           <Btn onClick={addAsset} v="success">+ Add Asset</Btn>
         </div>
-        <table className="w-full">
+        <div className="overflow-x-auto"><table className="w-full">
           <thead><tr className="border-b border-slate-100">
             <th className="text-left py-2 px-2 text-xs text-slate-400 cursor-pointer hover:text-slate-600" onClick={() => toggleSort("name")}>Asset {sortBy === "name" ? (sortDir > 0 ? "↑" : "↓") : ""}</th>
             <th className="text-right py-2 px-2 text-xs text-slate-400 cursor-pointer hover:text-slate-600" onClick={() => toggleSort("price")}>Price {sortBy === "price" ? (sortDir > 0 ? "↑" : "↓") : ""}</th>
@@ -3595,7 +3632,7 @@ function MarketWatch({ jargonFree: jf, onNav }) {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </Card>
 
       {/* ===== ASSET DETAIL VIEW ===== */}
@@ -3805,7 +3842,7 @@ function MarketWatch({ jargonFree: jf, onNav }) {
       })()}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4">
         <button onClick={() => onNav && onNav("marketlab")} className="p-4 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:shadow-md transition-all text-left">
           <div className="text-sm font-bold text-slate-800">{jf ? "Analyze a Chart" : "Technical Analysis"}</div>
           <div className="text-xs text-slate-500 mt-1">{jf ? "Deep-dive into any asset with indicators and signals" : "Open Charts & Signals for full TA"}</div>
@@ -3839,7 +3876,7 @@ function SnapshotHistory({ snapshots, jargonFree: jf, onNav, onSaveNow }) {
     {snapshots.length === 0 ? (<Card><p className="text-sm text-slate-500">No snapshots yet. Hit <span className="font-bold">📸 Save Today's Snapshot</span> above (or from the top bar on any page) to capture today's numbers. Come back later to see how things changed.</p></Card>) : (
       <div className="space-y-3">{snapshots.slice().reverse().map((snap, i) => { const reversed = snapshots.slice().reverse(); const prev = reversed[i + 1]; const delta = (k) => prev ? (snap[k] - prev[k]) : null; const renderDelta = (k, fmt = $) => { const d = delta(k); if (d === null || d === 0) return null; return (<div className={`text-xs ${d >= 0 ? "text-emerald-600" : "text-red-500"}`}>{d >= 0 ? "↑" : "↓"} {fmt(Math.abs(d))}</div>); }; return (
         <Card key={snap.id}><div className="flex items-center justify-between mb-3"><div><h3 className="text-sm font-bold text-slate-700">{snap.ts}</h3>{snap.label && <p className="text-xs text-slate-500 mt-0.5">{snap.label}</p>}{i === 0 && <Badge color="indigo">Most recent</Badge>}</div></div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             <div><div className="text-xs text-slate-400">Net Worth</div><div className={`text-xl font-bold ${snap.nw >= 0 ? "text-emerald-700" : "text-red-600"}`}>{$(snap.nw)}</div>{renderDelta("nw")}</div>
             <div><div className="text-xs text-slate-400">Monthly Surplus</div><div className={`text-xl font-bold ${snap.surplus >= 0 ? "text-emerald-700" : "text-red-600"}`}>{$(snap.surplus)}</div>{renderDelta("surplus")}</div>
             <div><div className="text-xs text-slate-400">Health Score</div><div className="text-xl font-bold text-indigo-700">{snap.healthScore}/100</div>{renderDelta("healthScore", v => v.toFixed(0))}</div>
@@ -3878,7 +3915,7 @@ function GoalPriority({ jargonFree: jf }) {
     <F label={jf ? "Expected investment return (long-term)" : "Expected investment return (after inflation)"} value={expReturn} onChange={setExpReturn} suffix="%" info="Stock market real return historically ~7%. Use after-tax & inflation-adjusted." />
     <Card className="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200"><h3 className="text-sm font-bold text-indigo-700 mb-3">📋 Priority order — every extra dollar goes here in sequence</h3>
       {ranked.map((item, i) => (<div key={i} className="flex items-start gap-3 mb-3 last:mb-0 p-3 bg-white rounded-lg"><span className={`shrink-0 w-7 h-7 rounded-full font-bold flex items-center justify-center text-sm ${i === 0 ? "bg-emerald-500 text-white" : "bg-indigo-100 text-indigo-700"}`}>{i + 1}</span><div className="flex-1"><div className="flex items-center justify-between mb-0.5"><div className="text-sm font-bold text-slate-800">{item.name}</div><Badge color={item.effective >= 15 ? "red" : item.effective >= 8 ? "amber" : "green"}>{item.effective.toFixed(1)}% return</Badge></div><div className="text-xs text-slate-500">{item.type === "match" ? "401(k) match = 100% instant return on the matched portion. Fund this before anything else, every time." : item.type === "invest" ? `Expected long-term return of ${expReturn}%. Compounds tax-deferred or tax-free in retirement accounts.` : `${item.rate}% interest = your guaranteed effective return when you pay it down. ${item.rate > expReturn ? "Higher than expected investment return — pay this off." : "Below expected investment return — make minimum payments and invest instead."}`}</div></div></div>))}
-      <div className="mt-3 p-2 bg-amber-50 rounded text-[10px] text-amber-900"><span className="font-bold">⚠ Rule:</span> Always fund the emergency fund (3-6 months) before investing or extra debt payoff. Cash buffer prevents the next emergency from undoing all this work.</div>
+      <div className="mt-3 p-2 bg-amber-50 rounded text-xs text-amber-900"><span className="font-bold">⚠ Rule:</span> Always fund the emergency fund (3-6 months) before investing or extra debt payoff. Cash buffer prevents the next emergency from undoing all this work.</div>
     </Card>
   </div>);
 }
@@ -3899,6 +3936,7 @@ function TaxOptimizer({ jargonFree: jf, locale }) {
   waterfall.push({ priority: 5, name: "Taxable brokerage", amount: null, reason: "After tax-advantaged accounts are full, invest taxable. Use broad index ETFs + tax-loss harvesting at year-end." });
   return (<div className="max-w-5xl mx-auto p-8">
     <Title tier="Investing" sub="Where to put each dollar for maximum after-tax wealth">Tax Optimizer</Title>
+    <AdviceNote kind="tax" />
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       <Card><h3 className="text-sm font-bold text-slate-700 mb-3">Your situation</h3>
         <F label="Annual income" value={data.income} onChange={u("income")} prefix={LOCALES[locale]?.currency || "$"} />
@@ -3919,14 +3957,14 @@ function TaxOptimizer({ jargonFree: jf, locale }) {
       </div>))}
     </Card>
     <Card><h3 className="text-sm font-bold text-slate-700 mb-3">🗺️ Asset Location — where to hold each asset class</h3>
-      <table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500"><th className="text-left py-1.5 px-2">Asset</th><th className="text-left py-1.5 px-2">Best Account</th><th className="text-left py-1.5 px-2">Why</th></tr></thead><tbody>
+      <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500"><th className="text-left py-1.5 px-2">Asset</th><th className="text-left py-1.5 px-2">Best Account</th><th className="text-left py-1.5 px-2">Why</th></tr></thead><tbody>
         <tr className="border-t border-slate-100"><td className="py-1.5 px-2 font-semibold">Bonds / Bond ETFs</td><td className="py-1.5 px-2">Traditional 401(k)/IRA</td><td className="py-1.5 px-2 text-slate-500">Interest is taxed as ordinary income — shelter it</td></tr>
         <tr className="border-t border-slate-100"><td className="py-1.5 px-2 font-semibold">REITs</td><td className="py-1.5 px-2">Traditional 401(k)/IRA</td><td className="py-1.5 px-2 text-slate-500">Non-qualified dividends taxed as ordinary income</td></tr>
         <tr className="border-t border-slate-100"><td className="py-1.5 px-2 font-semibold">US stocks (broad index)</td><td className="py-1.5 px-2">Roth IRA or Taxable</td><td className="py-1.5 px-2 text-slate-500">LTCG rate already low; Roth gives tax-free compounding</td></tr>
         <tr className="border-t border-slate-100"><td className="py-1.5 px-2 font-semibold">International stocks</td><td className="py-1.5 px-2">Taxable</td><td className="py-1.5 px-2 text-slate-500">Foreign tax credit only works in taxable accounts</td></tr>
         <tr className="border-t border-slate-100"><td className="py-1.5 px-2 font-semibold">Crypto / high-vol</td><td className="py-1.5 px-2">Roth IRA (if possible)</td><td className="py-1.5 px-2 text-slate-500">Big upside ⇒ tax-free Roth = ideal location</td></tr>
         <tr className="border-t border-slate-100"><td className="py-1.5 px-2 font-semibold">Cash / HYSA</td><td className="py-1.5 px-2">Any (priority: emergency fund)</td><td className="py-1.5 px-2 text-slate-500">Use HYSA at 4-5% APY — interest is taxable as ordinary income</td></tr>
-      </tbody></table>
+      </tbody></table></div>
       <WhyMatters text="Asset location adds ~30-50 basis points per year for a serious portfolio — that compounds to hundreds of thousands over a career. Vanguard's research confirms it's the second-most-valuable tax move after tax-loss harvesting." />
     </Card>
     <Assumptions items={[
@@ -3985,7 +4023,7 @@ function MonteCarloRetirement({ jargonFree: jf }) {
           <div className="flex items-center gap-2"><span className="text-xs w-24 text-emerald-700">75th %ile</span><div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${widthOf(sims.p75)}%` }} /></div><span className="text-sm font-bold text-emerald-700 w-28 text-right">{$(sims.p75)}</span></div>
           <div className="flex items-center gap-2"><span className="text-xs w-24 text-emerald-700">Best 10%</span><div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${widthOf(sims.p90)}%` }} /></div><span className="text-sm font-bold text-emerald-700 w-28 text-right">{$(sims.p90)}</span></div>
         </div>
-        <p className="text-[10px] text-slate-500 mt-3">Plan around the 25th percentile — it's the realistic "things didn't go great" case. Don't anchor on the median.</p>
+        <p className="text-xs text-slate-500 mt-3">Plan around the 25th percentile — it's the realistic "things didn't go great" case. Don't anchor on the median.</p>
       </Card>
     </div>
     <Card><h3 className="text-sm font-bold text-slate-700 mb-3">Withdrawal stress test — how long does the money last?</h3>
@@ -4042,9 +4080,9 @@ function LifeEvents({ jargonFree: jf, onNav }) {
     {selected && (<Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
       <div className="flex items-center gap-2 mb-3"><span className="text-2xl">{selected.emoji}</span><h3 className="text-lg font-bold text-slate-800">If you {selected.title.toLowerCase()}...</h3></div>
       <div className="bg-white rounded-lg overflow-hidden mb-4">
-        <table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500"><th className="text-left p-2">Impact</th><th className="text-right p-2">Amount</th><th className="text-left p-2">Note</th></tr></thead><tbody>
+        <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500"><th className="text-left p-2">Impact</th><th className="text-right p-2">Amount</th><th className="text-left p-2">Note</th></tr></thead><tbody>
           {selected.impacts.map((i, idx) => (<tr key={idx} className="border-t border-slate-100"><td className="p-2 font-semibold">{i.type === "asset" ? "📈 " : i.type === "liability" ? "📉 " : "💸 "}{i.label}</td><td className={`p-2 text-right font-bold ${i.amount >= 0 ? "text-emerald-700" : "text-red-600"}`}>{i.amount >= 0 ? "+" : ""}{$(i.amount)}{i.type === "monthly" ? "/mo" : ""}</td><td className="p-2 text-slate-500">{i.note}</td></tr>))}
-        </tbody></table>
+        </tbody></table></div>
       </div>
       <div className="p-3 bg-amber-50 border-l-2 border-amber-400 rounded text-xs text-amber-900"><span className="font-bold">📝 Strategy:</span> {selected.advice}</div>
     </Card>)}
@@ -4098,7 +4136,7 @@ function defaultVisibleTiers(knowledge, focus) {
 // Manage Modules overlay (Round 2 #8)
 function ManageModulesPanel({ allTiers, visibleTiers, onToggle, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4" onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()}>
       <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-slate-800">Manage Modules</h3>
@@ -4360,14 +4398,14 @@ function Vantage() {
         </div>
         <div className="px-2 pt-3 border-t border-slate-800">
           <button onClick={() => setManageOpen(true)} className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors mb-2 text-left">⚙ Manage Modules</button>
-          <div className="flex flex-wrap gap-x-2 gap-y-1 px-3 text-[10px] text-slate-500">
+          <div className="flex flex-wrap gap-x-2 gap-y-1 px-3 text-xs text-slate-500">
             <button onClick={() => setLegalOpen("terms")} className="hover:text-slate-300">Terms</button>
             <span className="text-slate-700">·</span>
             <button onClick={() => setLegalOpen("privacy")} className="hover:text-slate-300">Privacy</button>
             <span className="text-slate-700">·</span>
             <button onClick={() => setLegalOpen("disclaimer")} className="hover:text-slate-300">Disclaimer</button>
           </div>
-          <p className="text-[10px] text-slate-600 px-3 mt-2 italic">Educational tool — not financial advice</p>
+          <p className="text-xs text-slate-600 px-3 mt-2 italic">Educational tool — not financial advice</p>
         </div>
       </aside>
 
@@ -4397,12 +4435,13 @@ function Vantage() {
               <span>🔍</span><span className="hidden md:inline">Glossary</span>
             </button>
             <button onClick={() => setJargon(!jargon)} className={`px-2 md:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${jargon ? "bg-emerald-600 text-white" : (dark ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}`} title="Show plain-English explanations and simpler labels"><span className={`inline-block w-7 h-3.5 rounded-full relative transition-colors ${jargon ? "bg-emerald-300" : "bg-slate-300"}`}><span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${jargon ? "left-3.5" : "left-0.5"}`} /></span><span className="hidden md:inline">Plain English</span></button>
-            <button onClick={() => setDark(!dark)} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center transition-colors ${dark ? "bg-slate-700 text-amber-300 hover:bg-slate-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`} title="Toggle dark mode">{dark ? "☀" : "☾"}</button>
+            {/* Dark mode toggle hidden for launch — theming only covers the shell so far. Re-enable once dark variants reach all module content (Wave-2 task). */}
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">
           {journey && <GuidedBar journey={journey} currentStepIndex={journeyStepIndex} onNextStep={handleNextJourneyStep} onExit={() => setJourney(null)} />}
+          <ErrorBoundary key={active} onReset={() => setActive("home")}>
           {active === "home" && <Home engagement={engagement} healthScore={healthScore} riskProfile={riskProfile} riskLabel={riskLabel} onNav={nav} toured={toured} onDismissTour={dismissTour} />}
           {active === "guide" && <Guide journeys={JOURNEYS} onSelectJourney={handleJourneySelect} />}
           {active === "quick" && <QuickTools />}
@@ -4430,6 +4469,7 @@ function Vantage() {
           {active === "taxopt" && <TaxOptimizer jargonFree={jargon} locale={locale} />}
           {active === "lifeevents" && <LifeEvents jargonFree={jargon} onNav={nav} />}
           {active === "snapshots" && <SnapshotHistory snapshots={snapshots} jargonFree={jargon} onNav={nav} onSaveNow={() => saveSnapshot({ nw: 0, surplus: 0, healthScore, label: "Manual save from history view" })} />}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

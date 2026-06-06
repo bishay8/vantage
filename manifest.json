@@ -1,0 +1,17 @@
+{
+  "name": "Vantage — Financial Intelligence",
+  "short_name": "Vantage",
+  "description": "Your whole financial life, in plain English. 26 free tools for budgeting, investing, retirement, tax, and stress-testing.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "social-preview.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
