@@ -197,7 +197,7 @@ const LEGAL_TEXT = {
   privacy: { title: "Privacy Policy", lastUpdated: "May 2026",
     body: [
       ["Information We Collect", "Currently the Service runs entirely in your browser and does not transmit your financial inputs to any server. All data you enter (income, expenses, holdings, etc.) lives only in your browser's memory and is lost when you close the tab. We do not use cookies, localStorage, or any tracking."],
-      ["Anthropic API Key (BYOK)", "If you provide an Anthropic API key for AI features, the key is held in your browser session memory only. It is sent directly to Anthropic's servers with your generation request and is never transmitted to our servers. We do not log, store, or retain your key."],
+      ["Anthropic API Key & AI Features (BYOK)", "If you use the optional AI category feature, your Anthropic API key AND the description of your work that you type are sent directly from your browser to Anthropic's servers (api.anthropic.com) to generate a response. They are governed by Anthropic's privacy terms, not ours. Nothing is transmitted to, logged by, or stored on Vantage servers — we have no backend. The key lives in your browser tab's memory only and is cleared when you close the tab."],
       ["Future Backend (SOC 2)", "We are building a SOC 2 Type 2 compliant backend that will optionally let you save your data across sessions. When that launches, the data you choose to persist will be encrypted at rest and in transit. You will be asked to opt in explicitly. This Privacy Policy will be updated to reflect the new data flows before that feature ships."],
       ["No Analytics", "We do not currently collect analytics, usage data, or any telemetry."],
       ["Data Subject Rights", "Because we do not currently store any of your data, there is nothing for you to delete, export, or correct on our servers. To clear your in-browser data, refresh the page or close the tab."],
@@ -589,7 +589,7 @@ function CustomizePanel({ open, onClose, onApply, currentLabel }) {
     setGenerating(true); setError(null); setGenerated(null);
     try {
       const result = await generateCategoriesViaAI({ profession, apiKey, model });
-      setGenerated({ id: "custom", label: profession.slice(0, 40), emoji: "✨", ...result });
+      setGenerated({ id: "custom", label: "Custom (AI-generated)", emoji: "✨", ...result });
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -872,10 +872,12 @@ function Onboarding({ onComplete, onLegalOpen }) {
           <p className="text-slate-500">Financial intelligence in plain English. Let's tailor this to you.</p>
         </div>
         <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider text-center mb-3">Step 1 of 4</div>
-        <h2 className="text-2xl font-bold text-slate-800 text-center mb-6">What brought you here today?</h2>
+        <h2 className="text-2xl font-bold text-slate-800 text-center mb-2">What brought you here today?</h2>
+        {!agreedTerms && <p className="text-xs text-amber-700 text-center mb-4 font-medium">Agree to the terms below first ↓, then pick what fits you.</p>}
+        {agreedTerms && <p className="text-xs text-slate-400 text-center mb-4">Pick one to personalize your setup.</p>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {intents.map(it => (
-            <button key={it.id} disabled={!agreedTerms} onClick={() => { setIntent(it); setStep(1); }} className={`p-5 rounded-xl border-2 text-left transition-all ${!agreedTerms ? "opacity-40 cursor-not-allowed border-slate-200 bg-white" : `hover:border-indigo-400 hover:shadow-md ${intent?.id === it.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white"}`}`}>
+            <button key={it.id} disabled={!agreedTerms} onClick={() => { setIntent(it); setStep(1); }} className={`p-5 rounded-xl border-2 text-left transition-all ${!agreedTerms ? "opacity-60 cursor-not-allowed border-slate-200 bg-slate-50" : `hover:border-indigo-400 hover:shadow-md ${intent?.id === it.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white"}`}`}>
               <div className="text-3xl mb-2">{it.emoji}</div>
               <div className="text-sm font-bold text-slate-800">{it.title}</div>
               <div className="text-xs text-slate-500 mt-1">{it.desc}</div>
@@ -1645,14 +1647,21 @@ function Portfolio({ jargonFree: jf, riskType, onNav, onEngage, toured, onDismis
       ]} />
 
       {!edited && <SampleBanner onReset={clearAll} />}
-      {edited && <div className="mb-3 flex justify-end"><button onClick={resetToSample} className="text-xs text-slate-400 hover:text-slate-600 underline">↺ Restore example portfolio</button></div>}
+      {edited && <div className="mb-3 flex justify-end"><button onClick={resetToSample} className="text-xs text-slate-500 hover:text-slate-700 underline">↺ Restore example portfolio</button></div>}
+
+      {holdings.length === 0 && (<Card className="mb-4 text-center bg-slate-50 border-dashed">
+        <div className="text-3xl mb-2">📊</div>
+        <h3 className="text-sm font-bold text-slate-700 mb-1">No holdings yet</h3>
+        <p className="text-xs text-slate-500 mb-3">Add your first asset below to see your value, gains, and diversification.</p>
+        <Btn onClick={addH} v="success">+ Add your first holding</Btn>
+      </Card>)}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
         <Card accent="neutral"><div className="text-xs text-slate-400 font-semibold">{jf ? "Total Value" : "Portfolio Value"}</div><div className="text-3xl font-bold text-slate-800 mt-1">{$(totalValue)}</div><div className="h-0.5 w-12 mt-1 rounded-full bg-sky-400" /></Card>
         <Card><div className="text-xs text-slate-400 font-semibold">{jf ? "What You Put In" : "Total Cost"}</div><div className="text-2xl font-bold text-slate-600 mt-1">{$(totalCost)}</div></Card>
         <Card accent={totalGain >= 0 ? "good" : "bad"}><div className="text-xs text-slate-400 font-semibold">{jf ? "Total Profit/Loss" : "Unrealized P&L"}<Tip text={jf ? "How much you've gained or lost on paper. Not real until you sell." : "Paper gains/losses on holdings you haven't sold."} /></div><div className={`text-3xl font-bold mt-1 ${totalGain >= 0 ? "text-emerald-600" : "text-red-500"}`}>{$(totalGain)}</div><div className={`h-0.5 w-12 mt-1 rounded-full ${totalGain >= 0 ? "bg-emerald-400" : "bg-red-400"}`} /><div className="text-xs text-slate-400 mt-1">{$(totalGainPct, "%")}</div></Card>
-        <Card accent={diversScore >= 65 ? "good" : diversScore >= 40 ? "neutral" : "bad"}><div className="flex items-center gap-2"><Ring score={diversScore} max={100} size={70} color={diversScore >= 65 ? "green" : diversScore >= 40 ? "yellow" : "red"} /><div><div className="text-xs text-slate-400 font-semibold">{jf ? "How Spread Out" : "Diversification"}</div><div className="text-sm font-bold text-slate-700">{diversScore >= 65 ? "Good" : diversScore >= 40 ? "Fair" : "Low"}</div><WhyMatters text={`Concentration risk — HHI of ${(hhi * 10000).toFixed(0)} (under 2,500 is well-diversified). Above 2,500 means a single asset class dominates, and a downturn in that class would hurt you disproportionately.`} /></div></div></Card>
+        <Card accent={holdings.length === 0 ? "neutral" : diversScore >= 65 ? "good" : diversScore >= 40 ? "neutral" : "bad"}><div className="flex items-center gap-2"><Ring score={holdings.length === 0 ? 0 : diversScore} max={100} size={70} color={holdings.length === 0 ? "indigo" : diversScore >= 65 ? "green" : diversScore >= 40 ? "yellow" : "red"} /><div><div className="text-xs text-slate-400 font-semibold">{jf ? "How Spread Out" : "Diversification"}</div><div className="text-sm font-bold text-slate-700">{holdings.length === 0 ? "—" : diversScore >= 65 ? "Good" : diversScore >= 40 ? "Fair" : "Low"}</div><WhyMatters text={`Concentration risk — HHI of ${(hhi * 10000).toFixed(0)} (under 2,500 is well-diversified). Above 2,500 means a single asset class dominates, and a downturn in that class would hurt you disproportionately.`} /></div></div></Card>
       </div>
 
       {/* Allocation Breakdown */}
@@ -2552,7 +2561,7 @@ function Loans({ jargonFree: jf }) {
   const [l, setL] = useState({ principal: 300000, rate: 6.5, term: 30, extra: 0 });
   const ul = (k) => (v) => setL(p => ({ ...p, [k]: v }));
   const mr = l.rate / 100 / 12; const n = l.term * 12;
-  const mp = mr > 0 ? l.principal * (mr * Math.pow(1 + mr, n)) / (Math.pow(1 + mr, n) - 1) : l.principal / n;
+  const mp = n <= 0 ? 0 : (mr > 0 ? l.principal * (mr * Math.pow(1 + mr, n)) / (Math.pow(1 + mr, n) - 1) : l.principal / n);
   const totalInt = mp * n - l.principal;
   let bal = l.principal, moE = 0, intE = 0;
   while (bal > 0 && moE < n * 2) { const i = bal * mr; bal -= Math.min(mp - i + l.extra, bal); intE += i; moE++; }
@@ -2568,7 +2577,7 @@ function Loans({ jargonFree: jf }) {
           <Card><div className="text-xs text-slate-400">{jf ? "Monthly Bill" : "Payment"}</div><div className="text-lg font-bold text-slate-800 mt-1">{$(mp)}</div></Card>
           <Card><div className="text-xs text-slate-400">{jf ? "Total Interest" : "Total Interest"}</div><div className="text-lg font-bold text-red-500 mt-1">{$(totalInt)}</div></Card>
           <Card><div className="text-xs text-slate-400">Total Cost</div><div className="text-lg font-bold text-slate-800 mt-1">{$(mp * n)}</div></Card>
-          <Card><div className="text-xs text-slate-400">{jf ? "Interest vs Borrowed" : "Interest/Principal"}</div><div className="text-lg font-bold text-indigo-600 mt-1">{((totalInt / l.principal) * 100).toFixed(0)}%</div></Card>
+          <Card><div className="text-xs text-slate-400">{jf ? "Interest vs Borrowed" : "Interest/Principal"}</div><div className="text-lg font-bold text-indigo-600 mt-1">{l.principal > 0 && Number.isFinite(totalInt) ? ((totalInt / l.principal) * 100).toFixed(0) + "%" : "—"}</div></Card>
         </div>
       </div>
       {l.extra > 0 && <Card className="mb-4 bg-emerald-50 border-emerald-200"><p className="text-sm text-emerald-700">Extra {$(l.extra)}/mo saves <strong>{$(saved)}</strong> in interest and pays off <strong>{(l.term - moE / 12).toFixed(1)} years early</strong>.</p></Card>}
@@ -3982,8 +3991,8 @@ function MonteCarloRetirement({ jargonFree: jf }) {
   const [d, setD] = useState({ currentBalance: 80000, monthlyContrib: 500, years: 30, expReturn: 7, stdDev: 15, withdrawalPerMonth: 4000 });
   const u = (k) => (v) => setD(p => ({ ...p, [k]: v }));
   const sims = useMemo(() => {
-    const N = 5000;
-    const months = d.years * 12;
+    const N = 10000;
+    const months = Math.max(0, Math.round(d.years * 12));
     const monthlyMean = d.expReturn / 100 / 12;
     const monthlyStd = (d.stdDev / 100) / Math.sqrt(12);
     const finals = [];
@@ -4006,6 +4015,7 @@ function MonteCarloRetirement({ jargonFree: jf }) {
   return (<div className="max-w-5xl mx-auto p-8">
     <Title tier="My Money" sub="10,000 simulations showing the full distribution of outcomes — not just one path">Monte Carlo Retirement</Title>
     <div className="mb-3"><ConfidenceLabel level="estimate" note="Real returns vary year to year. Single-path projections show one outcome and lie about precision; Monte Carlo shows the realistic range — including the bad scenarios you need to plan for." /></div>
+    <div className="mb-4 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2"><span aria-hidden="true">⚠</span><span>Probability estimates, not guarantees. Even a "good" outcome can fail if a market crash hits early in retirement. Educational only — not financial advice.</span></div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       <Card>
         <F label={jf ? "What you have today" : "Current balance"} value={d.currentBalance} onChange={u("currentBalance")} prefix="$" />
@@ -4015,7 +4025,7 @@ function MonteCarloRetirement({ jargonFree: jf }) {
         <F label={jf ? "How bumpy returns are" : "Annual volatility (std dev)"} value={d.stdDev} onChange={u("stdDev")} suffix="%" info="S&P 500 historical ~15-20%" />
       </Card>
       <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
-        <h3 className="text-sm font-bold text-indigo-700 mb-3">After 5,000 simulations</h3>
+        <h3 className="text-sm font-bold text-indigo-700 mb-3">After 10,000 simulations</h3>
         <div className="space-y-2">
           <div className="flex items-center gap-2"><span className="text-xs w-24 text-red-700">Worst 10%</span><div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-red-400" style={{ width: `${widthOf(sims.p10)}%` }} /></div><span className="text-sm font-bold text-red-700 w-28 text-right">{$(sims.p10)}</span></div>
           <div className="flex items-center gap-2"><span className="text-xs w-24 text-amber-700">25th %ile</span><div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-amber-400" style={{ width: `${widthOf(sims.p25)}%` }} /></div><span className="text-sm font-bold text-amber-700 w-28 text-right">{$(sims.p25)}</span></div>
