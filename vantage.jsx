@@ -604,6 +604,10 @@ function CustomizePanel({ open, onClose, onApply, currentLabel }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [generated, setGenerated] = useState(null);
+  const [ownLabel, setOwnLabel] = useState("");
+  const [ownItems, setOwnItems] = useState([]); // user-entered line items: { label, bucket }
+  const [niLabel, setNiLabel] = useState("");
+  const [niBucket, setNiBucket] = useState("assets");
 
   if (!open) return null;
 
@@ -621,6 +625,16 @@ function CustomizePanel({ open, onClose, onApply, currentLabel }) {
 
   const applyTemplate = (t) => { onApply(t); onClose(); };
 
+  // "Build your own": manual line items — no API key or backend needed, lives in browser memory.
+  const addOwnItem = () => { const label = niLabel.trim(); if (!label) return; setOwnItems([...ownItems, { label, bucket: niBucket }]); setNiLabel(""); };
+  const removeOwnItem = (idx) => setOwnItems(ownItems.filter((_, i) => i !== idx));
+  const applyOwn = () => {
+    const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 28);
+    const mk = (bucket) => ownItems.map((it, i) => ({ it, i })).filter(x => x.it.bucket === bucket).map(({ it, i }) => ({ key: "u" + i + "_" + (slug(it.label) || "item"), label: it.label, placeholder: "e.g. $0", hint: "Your own line item" }));
+    onApply({ id: "own", label: ownLabel.trim() || "My Custom Set", emoji: "🧩", assets: mk("assets"), liabilities: mk("liabilities"), expenses: mk("expenses") });
+    onClose();
+  };
+
   return (<div className="fixed inset-0 z-50 bg-slate-900/60 flex items-start justify-center p-4 pt-12 overflow-y-auto" onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()}>
     <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-[#1c1f26] rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden mb-12">
       <div className="px-6 py-4 border-b border-slate-100 dark:border-[#262b33] flex items-center justify-between">
@@ -633,6 +647,7 @@ function CustomizePanel({ open, onClose, onApply, currentLabel }) {
       <div className="px-6 pt-4 flex gap-1 border-b border-slate-100 dark:border-[#262b33]">
         <button onClick={() => setTab("template")} className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${tab === "template" ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500" : "text-slate-500 dark:text-[#a3acba] hover:text-slate-700"}`}>Pick a Template</button>
         <button onClick={() => setTab("ai")} className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${tab === "ai" ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500" : "text-slate-500 dark:text-[#a3acba] hover:text-slate-700"}`}>✨ Generate with Claude</button>
+        <button onClick={() => setTab("own")} className={`px-4 py-2 text-sm font-semibold rounded-t-lg ${tab === "own" ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500" : "text-slate-500 dark:text-[#a3acba] hover:text-slate-700"}`}>➕ Build your own</button>
         <button onClick={() => { onApply(null); onClose(); }} className="ml-auto px-4 py-2 text-sm text-slate-500 dark:text-[#a3acba] hover:text-red-600">Reset to default</button>
       </div>
       <div className="p-6">
@@ -700,6 +715,37 @@ function CustomizePanel({ open, onClose, onApply, currentLabel }) {
               <button onClick={() => applyTemplate(generated)} className="px-5 py-2 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Apply Generated Categories →</button>
             </div>
           </>)}
+        </>)}
+
+        {tab === "own" && (<>
+          <p className="text-xs text-slate-500 dark:text-[#a3acba] mb-3">Add your own line items — anything the templates and AI didn't cover. No API key needed; this stays in your browser.</p>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-[#c4ccd8] mb-1">Name this set</label>
+          <input value={ownLabel} onChange={e => setOwnLabel(e.target.value)} placeholder="e.g. My Wholesale Business" className="bg-white dark:bg-[#1c1f26] w-full p-2 text-sm border border-slate-200 dark:border-[#323844] rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 mb-3" />
+          <label className="block text-xs font-semibold text-slate-600 dark:text-[#c4ccd8] mb-1">Add a line item</label>
+          <div className="flex flex-col sm:flex-row gap-2 mb-3">
+            <input value={niLabel} onChange={e => setNiLabel(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addOwnItem(); }} placeholder="Line item name (e.g. Box Truck Fleet)" className="bg-white dark:bg-[#1c1f26] flex-1 p-2 text-sm border border-slate-200 dark:border-[#323844] rounded-lg outline-none focus:ring-2 focus:ring-indigo-400" />
+            <select value={niBucket} onChange={e => setNiBucket(e.target.value)} className="bg-white dark:bg-[#1c1f26] p-2 text-sm border border-slate-200 dark:border-[#323844] rounded-lg outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="assets">Asset</option><option value="liabilities">Liability</option><option value="expenses">Monthly Expense</option>
+            </select>
+            <button onClick={addOwnItem} disabled={!niLabel.trim()} className={`px-4 py-2 text-sm font-semibold rounded-lg ${niLabel.trim() ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-slate-200 dark:bg-[#2c313b] text-slate-400 dark:text-[#828b9a] cursor-not-allowed"}`}>+ Add</button>
+          </div>
+          {ownItems.length === 0
+            ? <div className="bg-slate-50 dark:bg-[#15171c] rounded-xl p-6 text-center text-xs text-slate-400 dark:text-[#828b9a] mb-4">No line items yet — add a few above. They'll show in Personal Finance under your set, ready for you to fill in dollar amounts.</div>
+            : <div className="bg-slate-50 dark:bg-[#15171c] rounded-xl p-4 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                {[["Assets", "assets", "text-emerald-700 dark:text-emerald-300"], ["Liabilities", "liabilities", "text-red-700 dark:text-red-300"], ["Monthly Expenses", "expenses", "text-indigo-700 dark:text-indigo-300"]].map(([title, bucket, color]) => (
+                  <div key={bucket}>
+                    <div className={`font-bold mb-1 ${color}`}>{title}</div>
+                    {ownItems.map((it, i) => ({ it, i })).filter(x => x.it.bucket === bucket).map(({ it, i }) => (
+                      <div key={i} className="flex items-center justify-between gap-1 text-slate-600 dark:text-[#c4ccd8] mb-0.5"><span className="truncate">• {it.label}</span><button onClick={() => removeOwnItem(i)} aria-label={`Remove ${it.label}`} className="text-red-400 hover:text-red-600 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded">✕</button></div>
+                    ))}
+                    {ownItems.filter(x => x.bucket === bucket).length === 0 && <div className="text-slate-400 dark:text-[#828b9a]">—</div>}
+                  </div>
+                ))}
+              </div>}
+          <div className="flex justify-end gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 dark:text-[#c4ccd8] hover:bg-slate-100 rounded-lg">Cancel</button>
+            <button disabled={ownItems.length === 0} onClick={applyOwn} className={`px-5 py-2 text-sm font-semibold rounded-lg ${ownItems.length ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-slate-200 dark:bg-[#2c313b] text-slate-400 dark:text-[#828b9a] cursor-not-allowed"}`}>Apply {ownItems.length} item{ownItems.length === 1 ? "" : "s"} →</button>
+          </div>
         </>)}
       </div>
     </div>
