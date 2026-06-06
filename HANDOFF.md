@@ -1,6 +1,7 @@
 # Vantage — Session Handoff
 
-_Last updated: end of the launch-optimization session. Read this first._
+_Last updated: end of the launch-optimization session._
+_**Read `PROTOCOL.md` first** (the operating runbook), then this file (current state)._
 
 ## What Vantage is
 A **single-file React** financial-intelligence web app — ~4,490 lines in one `.jsx` file, 26 modules covering personal finance, investing, portfolio, options, tax, business valuation, Monte Carlo retirement, stress test, life events, and more. Plain-English mode on by default. Optional BYOK (bring-your-own-key) Anthropic integration generates profession-specific budget categories. Deployed to GitHub Pages.
