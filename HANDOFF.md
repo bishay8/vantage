@@ -47,7 +47,10 @@ git push origin main
 ```
 GitHub Pages auto-rebuilds in ~30s. Verify: `gh api repos/bishay8/vantage/pages/builds/latest --jq '.status'` should be `built`. Commit messages end with `Co-Authored-By: Claude ...`.
 
-## Current state — LAUNCH READY (~94/100)
+## Current state — LAUNCH READY (~96/100)
+A **financial fact/content audit** (web-verified against IRS/BEA/Fed) then fixed 11 stale or wrong claims (commit after the math pass): 2026 IRS limits were showing 2024 values while the text claimed "2026" — corrected to 401(k) $24,500 / IRA $7,500 / HSA $4,400; savings-rate benchmark 4.5%→8.4% long-run (so it can't re-stale); median income $6,500→$6,977 (2024 Census); inheritance "median" mislabel, an overstated "2-3× goal" claim → ~42%, a 22-29% APR range → ~20-25%, VIX/yield-curve tooltip nuance. The LTCG-rate and NIIT triggers are a known **simplification** (keyed off bracket, not taxable-income/MAGI thresholds) — now disclosed with an in-app caveat + `// FUTURE:` notes; a proper rebuild needs taxable-income + filing-status inputs (see What's NEXT). Median net worth $192k confirmed correct.
+
+
 A full launch-optimization pass shipped, then a **deep financial-correctness audit** independently re-derived all 10 formula groups. **7 passed clean** (Black-Scholes & Greeks, NPV/IRR/Payback/PI/EAA, bond YTM, CAPM/WACC/DCF, Monte Carlo & retirement compounding, HHI/diversification/P&L, stress-test & runway — all verified against concrete test cases). **3 confirmed bugs were fixed** (commit 11c8199):
 - Tax Estimator summed only winners, ignoring losses on sold holdings → now nets ST/LT gains & losses (verified: $3,129→$2,691 on sample).
 - Rent-vs-Buy equity used a hardcoded `0.85` loan factor → now the true amortized remaining balance (~$220k→~$203k on sample).
@@ -72,7 +75,9 @@ Earlier verification audit scored **91/100, ready to share, zero blockers**. Wha
    - `ErrorBoundary.componentDidCatch` → log to a remote sink for observability.
 2. **Full dark mode** — currently the toggle is HIDDEN (search `Dark mode toggle hidden for launch`). It only themed the shell, not module content, so it looked half-built. To finish: theme the shared primitives (`Card`, `F`, `StatCard`, `Title`, modals, `<main>` bg) with `dark:` variants. Large job; do it as its own pass, then un-hide the toggle.
 3. **Replace TEMPLATE legal copy** — Terms/Privacy/Disclaimer in `LEGAL_TEXT` are placeholder text (the user-visible "TEMPLATE" warning was removed, but a dev comment remains at the `LegalModal`). Get them lawyer-reviewed before any public/paid launch.
-4. **Optional Wave-3 leftovers** (nice-to-have, non-blocking): memoize MarketLab indicators (`calcSMA/EMA/RSI/MACD`) in `useMemo`; add text labels to a couple color-only red/green signals; granular consent + 18+ age check.
+4. **Tax-engine accuracy rebuild** (the one real content gap left): the Tax Estimator approximates the LTCG rate and the 3.8% NIIT from the user's ordinary bracket. Correct behavior keys off **taxable income** (LTCG 0/15/20% cutoffs, IRS Topic 409) and **MAGI + filing status** (NIIT $200k single / $250k MFJ, Topic 559). Add a taxable-income + filing-status input and drive both correctly. Search `// SIMPLIFICATION:` and `// FUTURE:` in TaxEstimator. Also: the contribution waterfall ignores age-50+ catch-ups (401(k) +$8,000, IRA +$1,100, HSA +$1,000 at 55+) — add an age input to include them.
+5. **Keep year-sensitive numbers current:** IRS limits and tax brackets change annually. Each January, re-verify the contribution limits, LTCG cutoffs, and standard-deduction/bracket figures (grep `24500`, `7500`, `4400`, `ltcgRate`, `stcgRate`). A future content re-audit workflow can automate this.
+6. **Optional Wave-3 leftovers** (nice-to-have, non-blocking): memoize MarketLab indicators (`calcSMA/EMA/RSI/MACD`) in `useMemo`; add text labels to a couple color-only red/green signals; granular consent + 18+ age check.
 
 ## Useful patterns from this session
 - For big audits/reviews, the **Workflow tool** with parallel auditor agents → adversarial verify → synthesis worked very well (see the two audit workflows that produced the 58→91 improvement). Re-run a verification workflow after any large batch of edits to catch regressions.
